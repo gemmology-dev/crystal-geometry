@@ -159,45 +159,46 @@ triclinic = LatticeParams.triclinic(a=1.0, b=1.2, c=1.5, alpha=80.0, beta=100.0,
 
 ::: crystal_geometry.LatticeParams
 
-## Half-Space Operations
+### get_lattice_for_system
 
-### HalfSpace
-
-A half-space defined by a plane equation.
+Get default lattice parameters for a crystal system.
 
 ```python
-from crystal_geometry import HalfSpace
+from crystal_geometry import get_lattice_for_system
+
+lattice = get_lattice_for_system('cubic')
+lattice = get_lattice_for_system('hexagonal', c_ratio=1.2)
+```
+
+::: crystal_geometry.get_lattice_for_system
+
+## Low-Level Functions
+
+### halfspace_intersection_3d
+
+Compute the convex polyhedron from half-space intersection.
+
+```python
+from crystal_geometry import halfspace_intersection_3d
 import numpy as np
 
-# Create half-space from normal and distance
-hs = HalfSpace(normal=np.array([1, 0, 0]), d=1.0)
+# Half-spaces as Ax <= b
+A = np.array([...])  # Normals
+b = np.array([...])  # Distances
+
+vertices, faces = halfspace_intersection_3d(A, b)
 ```
 
-::: crystal_geometry.HalfSpace
+::: crystal_geometry.halfspace_intersection_3d
 
-### build_crystal
+### compute_face_vertices
 
-Build crystal geometry from a list of half-spaces.
+Compute ordered vertices for each face of a polyhedron.
 
 ```python
-from crystal_geometry import build_crystal, HalfSpace
+from crystal_geometry import compute_face_vertices
 
-halfspaces = [...]  # List of HalfSpace objects
-geometry = build_crystal(halfspaces)
+face_vertices = compute_face_vertices(vertices, faces)
 ```
 
-::: crystal_geometry.build_crystal
-
-## Polyhedron Class
-
-Low-level polyhedron operations.
-
-```python
-from crystal_geometry import Polyhedron
-
-poly = Polyhedron(vertices, faces)
-poly.compute_normals()
-poly.compute_edges()
-```
-
-::: crystal_geometry.Polyhedron
+::: crystal_geometry.compute_face_vertices
