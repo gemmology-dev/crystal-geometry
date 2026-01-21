@@ -43,8 +43,10 @@ plugins:
 
 nav:
   - Home: index.md
+  - Crystal Systems: crystal-systems.md
   - API Reference: api.md
   - Examples: examples.md
+  - Troubleshooting: troubleshooting.md
 
 markdown_extensions:
   - pymdownx.highlight:
