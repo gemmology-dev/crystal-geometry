@@ -21,8 +21,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies from GitHub (until PyPI publish)
         run: |
+          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
           pip install -e ".[dev]"
 
       - name: Lint
