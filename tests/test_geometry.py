@@ -8,10 +8,8 @@ import numpy as np
 import pytest
 
 from cdl_parser import parse_cdl
-
 from crystal_geometry import (
     CrystalGeometry,
-    DEFAULT_LATTICE,
     LatticeParams,
     cdl_string_to_geometry,
     cdl_to_geometry,
@@ -23,7 +21,6 @@ from crystal_geometry import (
     get_point_group_operations,
     miller_to_normal,
 )
-
 
 # =============================================================================
 # LatticeParams Tests
@@ -237,8 +234,9 @@ class TestIntegration:
         """Test garnet-like crystal (dodecahedron + trapezohedron)."""
         geom = cdl_string_to_geometry("cubic[m3m]:{110}@1.0 + {211}@0.6")
         assert geom.is_valid()
-        # Dodecahedron (12) + trapezohedron (24) = 36 faces (if all truncate)
-        assert len(geom.faces) > 12
+        # Dodecahedron (12) + trapezohedron (24) = 36 faces when combined
+        # At minimum should have 24 faces (trapezohedron contributes more)
+        assert len(geom.faces) >= 24
 
     def test_hexagonal_prism(self):
         """Test hexagonal prism."""
