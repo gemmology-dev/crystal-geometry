@@ -142,7 +142,7 @@ def _generate_group(generators: list[np.ndarray], max_elements: int = 200) -> li
 
 
 # Cache for point group operations
-_POINT_GROUP_CACHE = {}
+_POINT_GROUP_CACHE: dict[str, list[np.ndarray]] = {}
 
 
 def get_point_group_operations(point_group: str) -> list[np.ndarray]:

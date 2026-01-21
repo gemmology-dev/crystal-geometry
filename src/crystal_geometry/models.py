@@ -37,12 +37,12 @@ class CrystalGeometry:
         Returns:
             List of (v1, v2) tuples where v1 < v2
         """
-        edges = set()
+        edges: set[tuple[int, int]] = set()
         for face in self.faces:
             n = len(face)
             for i in range(n):
                 v1, v2 = face[i], face[(i + 1) % n]
-                edge = tuple(sorted([v1, v2]))
+                edge = (min(v1, v2), max(v1, v2))
                 edges.add(edge)
         return list(edges)
 

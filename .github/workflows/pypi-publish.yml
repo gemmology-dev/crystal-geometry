@@ -1,0 +1,42 @@
+# Reusable workflow: Publish to PyPI on release
+# Usage: Copy to each Python package repo's .github/workflows/
+
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # For trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Uses trusted publishing - no token needed if configured
+        # Fallback to token-based auth:
+        # with:
+        #   password: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Create GitHub Release Assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} dist/*
