@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write  # For trusted publishing
+      id-token: write   # For trusted publishing
+      contents: write   # For uploading release assets
 
     steps:
       - uses: actions/checkout@v4
