@@ -5,11 +5,12 @@ Implements the 32 crystallographic point groups and their symmetry operations.
 Used to generate symmetry-equivalent faces from a single Miller index.
 """
 
+
+from functools import lru_cache
+
 import numpy as np
-from typing import List, Set, Tuple
 
-from .models import LatticeParams, DEFAULT_LATTICE
-
+from .models import DEFAULT_LATTICE, LatticeParams
 
 # =============================================================================
 # Symmetry Operation Matrices
@@ -107,7 +108,7 @@ C2_110 = np.array([
 # Point Group Operations
 # =============================================================================
 
-def _generate_group(generators: List[np.ndarray], max_elements: int = 200) -> List[np.ndarray]:
+def _generate_group(generators: list[np.ndarray], max_elements: int = 200) -> list[np.ndarray]:
     """Generate point group from generator matrices.
 
     Args:
@@ -144,7 +145,7 @@ def _generate_group(generators: List[np.ndarray], max_elements: int = 200) -> Li
 _POINT_GROUP_CACHE = {}
 
 
-def get_point_group_operations(point_group: str) -> List[np.ndarray]:
+def get_point_group_operations(point_group: str) -> list[np.ndarray]:
     """Get symmetry operations for a point group.
 
     Args:
@@ -218,10 +219,44 @@ def get_point_group_operations(point_group: str) -> List[np.ndarray]:
     return operations
 
 
+@lru_cache(maxsize=64)
+def _get_reciprocal_lattice(
+    a: float, b: float, c: float,
+    alpha: float, beta: float, gamma: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Compute reciprocal lattice vectors (cached for performance).
+
+    Args:
+        a, b, c: Lattice parameters
+        alpha, beta, gamma: Lattice angles in radians
+
+    Returns:
+        Tuple of (a*, b*, c*) reciprocal lattice vectors
+    """
+    # Direct lattice vectors
+    a_vec = np.array([a, 0, 0])
+    b_vec = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
+
+    cx = c * np.cos(beta)
+    cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+    cz = np.sqrt(c**2 - cx**2 - cy**2)
+    c_vec = np.array([cx, cy, cz])
+
+    # Volume
+    V = np.dot(a_vec, np.cross(b_vec, c_vec))
+
+    # Reciprocal lattice vectors
+    a_star = np.cross(b_vec, c_vec) / V
+    b_star = np.cross(c_vec, a_vec) / V
+    c_star = np.cross(a_vec, b_vec) / V
+
+    return a_star, b_star, c_star
+
+
 def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LATTICE) -> np.ndarray:
     """Convert Miller index to face normal vector.
 
-    For non-cubic systems, uses the reciprocal lattice.
+    For non-cubic systems, uses the reciprocal lattice (cached for performance).
 
     Args:
         h, k, l: Miller indices
@@ -237,26 +272,11 @@ def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LA
         # Cubic
         normal = np.array([h, k, l], dtype=float)
     else:
-        # Non-cubic: use reciprocal lattice vectors
-        a, b, c = lattice.a, lattice.b, lattice.c
-        alpha, beta, gamma = lattice.alpha, lattice.beta, lattice.gamma
-
-        # Direct lattice vectors
-        a_vec = np.array([a, 0, 0])
-        b_vec = np.array([b * np.cos(gamma), b * np.sin(gamma), 0])
-
-        cx = c * np.cos(beta)
-        cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
-        cz = np.sqrt(c**2 - cx**2 - cy**2)
-        c_vec = np.array([cx, cy, cz])
-
-        # Volume
-        V = np.dot(a_vec, np.cross(b_vec, c_vec))
-
-        # Reciprocal lattice vectors
-        a_star = np.cross(b_vec, c_vec) / V
-        b_star = np.cross(c_vec, a_vec) / V
-        c_star = np.cross(a_vec, b_vec) / V
+        # Non-cubic: use cached reciprocal lattice vectors
+        a_star, b_star, c_star = _get_reciprocal_lattice(
+            lattice.a, lattice.b, lattice.c,
+            lattice.alpha, lattice.beta, lattice.gamma
+        )
 
         # Normal in Cartesian coordinates
         normal = h * a_star + k * b_star + l * c_star
@@ -269,7 +289,7 @@ def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LA
 
 
 def generate_equivalent_faces(h: int, k: int, l: int, point_group: str,
-                              lattice: LatticeParams = DEFAULT_LATTICE) -> List[Tuple[int, int, int]]:
+                              lattice: LatticeParams = DEFAULT_LATTICE) -> list[tuple[int, int, int]]:
     """Generate all symmetry-equivalent Miller indices.
 
     Args:
@@ -283,7 +303,7 @@ def generate_equivalent_faces(h: int, k: int, l: int, point_group: str,
     operations = get_point_group_operations(point_group)
     miller = np.array([h, k, l])
 
-    equivalent: Set[Tuple[int, int, int]] = set()
+    equivalent: set[tuple[int, int, int]] = set()
 
     for op in operations:
         # Apply operation to Miller index
