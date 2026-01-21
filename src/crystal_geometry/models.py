@@ -4,9 +4,10 @@ Crystal Geometry Models.
 Data classes for 3D crystal geometry representation.
 """
 
-import numpy as np
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
+import numpy as np
 
 from cdl_parser import CrystalForm
 
@@ -24,13 +25,13 @@ class CrystalGeometry:
         forms: Original form definitions from CDL
     """
     vertices: np.ndarray  # Nx3 array of vertex positions
-    faces: List[List[int]]  # List of faces, each face is list of vertex indices
-    face_normals: List[np.ndarray]  # Normal vector for each face
-    face_forms: List[int]  # Which form each face belongs to (index into forms list)
-    face_millers: List[Tuple[int, int, int]]  # Miller index for each face
-    forms: List[CrystalForm] = field(default_factory=list)  # Original form definitions
+    faces: list[list[int]]  # List of faces, each face is list of vertex indices
+    face_normals: list[np.ndarray]  # Normal vector for each face
+    face_forms: list[int]  # Which form each face belongs to (index into forms list)
+    face_millers: list[tuple[int, int, int]]  # Miller index for each face
+    forms: list[CrystalForm] = field(default_factory=list)  # Original form definitions
 
-    def get_edges(self) -> List[Tuple[int, int]]:
+    def get_edges(self) -> list[tuple[int, int]]:
         """Get all unique edges as vertex index pairs.
 
         Returns:
@@ -128,7 +129,7 @@ class CrystalGeometry:
         """
         return self.euler_characteristic() == 2
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
             'vertices': self.vertices.tolist(),

@@ -6,12 +6,12 @@ Uses half-space intersection to combine crystal forms.
 """
 
 import numpy as np
-from scipy.spatial import ConvexHull, HalfspaceIntersection
-from typing import List, Optional, Tuple
+from scipy.optimize import linprog
+from scipy.spatial import HalfspaceIntersection, cKDTree
 
-from cdl_parser import CrystalDescription, CrystalForm, parse_cdl
+from cdl_parser import CrystalDescription, parse_cdl
 
-from .models import CrystalGeometry, LatticeParams, DEFAULT_LATTICE
+from .models import CrystalGeometry
 from .symmetry import (
     generate_equivalent_faces,
     get_lattice_for_system,
@@ -19,11 +19,110 @@ from .symmetry import (
 )
 
 
+def _find_interior_point(
+    normals: np.ndarray,
+    distances: np.ndarray
+) -> np.ndarray | None:
+    """Find interior point using linear programming (Chebyshev center).
+
+    Finds the center of the largest ball that fits inside the polyhedron
+    defined by the halfspaces. This is a robust way to find a strictly
+    interior point.
+
+    Args:
+        normals: Nx3 array of unit normal vectors
+        distances: N array of distances
+
+    Returns:
+        Interior point as 3-element array, or None if no solution
+    """
+    n_constraints = len(normals)
+
+    # Maximize r subject to: n_i · x + r <= d_i
+    # Variables: [x, y, z, r]
+    # We minimize -r (to maximize r)
+    c = np.array([0.0, 0.0, 0.0, -1.0])
+
+    # Build constraint matrix: [n_x, n_y, n_z, ||n||] (||n|| = 1 for unit normals)
+    A_ub = np.hstack([normals, np.ones((n_constraints, 1))])
+    b_ub = distances
+
+    # Bounds: x, y, z can be anything reasonable, r >= 0
+    bounds = [(-10.0, 10.0), (-10.0, 10.0), (-10.0, 10.0), (1e-10, None)]
+
+    try:
+        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+
+        if result.success and result.x[3] > 1e-10:
+            return result.x[:3]
+    except Exception:
+        pass
+
+    return None
+
+
+def _iterative_interior_point(
+    normals: np.ndarray,
+    distances: np.ndarray
+) -> np.ndarray | None:
+    """Find interior point by iterative shrinking.
+
+    Fallback method when linear programming fails.
+
+    Args:
+        normals: Nx3 array of unit normal vectors
+        distances: N array of distances
+
+    Returns:
+        Interior point or None
+    """
+    # Start at centroid of normals weighted by distances
+    centroid = np.zeros(3)
+    total_weight = 0.0
+
+    for normal, dist in zip(normals, distances, strict=False):
+        # Point on plane in direction of normal
+        point = normal * dist
+        centroid += point
+        total_weight += 1.0
+
+    if total_weight > 0:
+        centroid /= total_weight
+
+    # Check if centroid is inside all halfspaces
+    for normal, dist in zip(normals, distances, strict=False):
+        if np.dot(normal, centroid) > dist - 1e-10:
+            # Not inside, try shrinking toward origin
+            for scale in [0.5, 0.3, 0.1, 0.05, 0.01]:
+                test_point = centroid * scale
+                inside = True
+                for n, d in zip(normals, distances, strict=False):
+                    if np.dot(n, test_point) > d - 1e-10:
+                        inside = False
+                        break
+                if inside:
+                    return test_point
+
+            # Try pure origin
+            origin = np.zeros(3)
+            inside = True
+            for n, d in zip(normals, distances, strict=False):
+                if np.dot(n, origin) > d - 1e-10:
+                    inside = False
+                    break
+            if inside:
+                return origin
+
+            return None
+
+    return centroid
+
+
 def halfspace_intersection_3d(
-    normals: List[np.ndarray],
-    distances: List[float],
-    interior_point: Optional[np.ndarray] = None
-) -> Optional[np.ndarray]:
+    normals: list[np.ndarray],
+    distances: list[float],
+    interior_point: np.ndarray | None = None
+) -> np.ndarray | None:
     """Compute intersection of half-spaces in 3D.
 
     Each half-space is defined by: normal . x <= distance
@@ -36,29 +135,76 @@ def halfspace_intersection_3d(
     Returns:
         Array of vertices, or None if intersection is empty/unbounded
     """
+    normals_arr = np.array(normals)
+    distances_arr = np.array(distances)
+
     if interior_point is None:
-        interior_point = np.array([0.0, 0.0, 0.0])
+        # Try Chebyshev center first (most robust)
+        interior_point = _find_interior_point(normals_arr, distances_arr)
+
+        if interior_point is None:
+            # Fallback to iterative method
+            interior_point = _iterative_interior_point(normals_arr, distances_arr)
+
+        if interior_point is None:
+            # Last resort: try origin
+            interior_point = np.array([0.0, 0.0, 0.0])
 
     # Build halfspace matrix for scipy
     # Format: [A | -b] where Ax <= b becomes Ax - b <= 0
-    halfspaces = []
-    for normal, dist in zip(normals, distances):
-        row = list(normal) + [-dist]
-        halfspaces.append(row)
-
-    halfspaces = np.array(halfspaces)
+    halfspaces = np.hstack([normals_arr, -distances_arr.reshape(-1, 1)])
 
     try:
         hs = HalfspaceIntersection(halfspaces, interior_point)
         return hs.intersections
     except Exception:
-        # Try with adjusted interior point
+        # Try with scaled interior point
         try:
-            interior_point = interior_point * 0.1
-            hs = HalfspaceIntersection(halfspaces, interior_point)
+            scaled_point = interior_point * 0.5
+            hs = HalfspaceIntersection(halfspaces, scaled_point)
             return hs.intersections
         except Exception:
             return None
+
+
+def _deduplicate_vertices(
+    vertices: np.ndarray,
+    tolerance: float = 1e-8
+) -> np.ndarray:
+    """Remove duplicate vertices using KD-tree for O(n log n) performance.
+
+    Args:
+        vertices: Nx3 array of vertex positions
+        tolerance: Distance threshold for considering vertices identical
+
+    Returns:
+        Array of unique vertices
+    """
+    if len(vertices) == 0:
+        return vertices
+
+    # Build KD-tree for efficient nearest neighbor queries
+    tree = cKDTree(vertices)
+
+    # Find clusters of nearby vertices
+    unique_indices = []
+    visited = set()
+
+    for i in range(len(vertices)):
+        if i in visited:
+            continue
+
+        # Find all vertices within tolerance
+        neighbors = tree.query_ball_point(vertices[i], tolerance)
+
+        # Mark all neighbors as visited
+        for n in neighbors:
+            visited.add(n)
+
+        # Keep only the first vertex in this cluster
+        unique_indices.append(i)
+
+    return vertices[unique_indices]
 
 
 def compute_face_vertices(
@@ -66,7 +212,7 @@ def compute_face_vertices(
     normal: np.ndarray,
     distance: float,
     tolerance: float = 1e-6
-) -> List[int]:
+) -> list[int]:
     """Find vertices that lie on a face plane.
 
     Args:
@@ -156,23 +302,8 @@ def cdl_to_geometry(
     if vertices is None or len(vertices) < 4:
         raise ValueError("Failed to compute crystal geometry - no valid intersection")
 
-    # Remove duplicate vertices
-    unique_verts = []
-    vert_map = {}
-    tolerance = 1e-8
-
-    for i, v in enumerate(vertices):
-        found = False
-        for j, uv in enumerate(unique_verts):
-            if np.linalg.norm(v - uv) < tolerance:
-                vert_map[i] = j
-                found = True
-                break
-        if not found:
-            vert_map[i] = len(unique_verts)
-            unique_verts.append(v)
-
-    vertices = np.array(unique_verts)
+    # Remove duplicate vertices using KD-tree for O(n log n) performance
+    vertices = _deduplicate_vertices(vertices)
 
     # Build faces
     faces = []
@@ -180,7 +311,7 @@ def cdl_to_geometry(
     final_face_forms = []
     final_face_millers = []
 
-    for i, (normal, distance) in enumerate(zip(normals, distances)):
+    for i, (normal, distance) in enumerate(zip(normals, distances, strict=False)):
         face_verts = compute_face_vertices(vertices, normal, distance)
         if len(face_verts) >= 3:
             faces.append(face_verts)

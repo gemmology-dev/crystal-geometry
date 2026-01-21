@@ -121,9 +121,9 @@ hexagonal = LatticeParams.hexagonal(c_ratio=1.2)
 
 | System | Point Groups |
 |--------|-------------|
-| Cubic | m3m, 432, -43m, m3, 23 |
+| Cubic | m3m, 432, -43m, m-3, 23 |
 | Tetragonal | 4/mmm, 422, 4mm, -42m, 4/m, -4, 4 |
-| Hexagonal | 6/mmm, 622, 6mm, -62m, 6/m, -6, 6 |
+| Hexagonal | 6/mmm, 622, 6mm, -6m2, 6/m, -6, 6 |
 | Trigonal | -3m, 32, 3m, -3, 3 |
 | Orthorhombic | mmm, 222, mm2 |
 | Monoclinic | 2/m, 2, m |

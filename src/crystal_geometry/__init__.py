@@ -35,7 +35,7 @@ from .geometry import (
 )
 
 # Data classes
-from .models import CrystalGeometry, LatticeParams, DEFAULT_LATTICE
+from .models import DEFAULT_LATTICE, CrystalGeometry, LatticeParams
 
 # Symmetry operations
 from .symmetry import (
