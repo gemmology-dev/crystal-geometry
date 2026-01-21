@@ -57,6 +57,11 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0"
 ]
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24"
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
