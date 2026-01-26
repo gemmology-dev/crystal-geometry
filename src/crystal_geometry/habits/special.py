@@ -18,13 +18,7 @@ class Barrel(CrystalHabit):
     Hexagonal prism with tapered ends, giving a barrel-like appearance
     """
 
-    def __init__(
-        self,
-        scale: float = 1.0,
-        taper: float = 0.7,
-        c_ratio: float = 1.2,
-        **params
-    ):
+    def __init__(self, scale: float = 1.0, taper: float = 0.7, c_ratio: float = 1.2, **params):
         """Initialize barrel habit.
 
         Args:
@@ -41,7 +35,7 @@ class Barrel(CrystalHabit):
         return "Barrel"
 
     def _compute_vertices(self) -> np.ndarray:
-        angles = np.linspace(0, 2*np.pi, 7)[:-1]
+        angles = np.linspace(0, 2 * np.pi, 7)[:-1]
         r_base = 1.0
         r_top = r_base * self.taper
         h = self.c_ratio
@@ -49,10 +43,10 @@ class Barrel(CrystalHabit):
         verts = []
         # Bottom hexagon (larger)
         for a in angles:
-            verts.append([r_base * np.cos(a), r_base * np.sin(a), -h/2])
+            verts.append([r_base * np.cos(a), r_base * np.sin(a), -h / 2])
         # Top hexagon (smaller due to taper)
         for a in angles:
-            verts.append([r_top * np.cos(a), r_top * np.sin(a), h/2])
+            verts.append([r_top * np.cos(a), r_top * np.sin(a), h / 2])
 
         return np.array(verts, dtype=np.float64)
 
@@ -94,10 +88,19 @@ class Tabular(CrystalHabit):
         a = 1.0
         b = 0.8
         h = self.thickness
-        return np.array([
-            [-a, -b, -h], [a, -b, -h], [a, b, -h], [-a, b, -h],
-            [-a, -b, h], [a, -b, h], [a, b, h], [-a, b, h]
-        ], dtype=np.float64)
+        return np.array(
+            [
+                [-a, -b, -h],
+                [a, -b, -h],
+                [a, b, -h],
+                [-a, b, -h],
+                [-a, -b, h],
+                [a, -b, h],
+                [a, b, h],
+                [-a, b, h],
+            ],
+            dtype=np.float64,
+        )
 
     def _compute_faces(self) -> list[list[int]]:
         return [
@@ -106,7 +109,7 @@ class Tabular(CrystalHabit):
             [0, 1, 5, 4],  # Front
             [2, 3, 7, 6],  # Back
             [0, 4, 7, 3],  # Left
-            [1, 2, 6, 5]   # Right
+            [1, 2, 6, 5],  # Right
         ]
 
 
@@ -124,32 +127,63 @@ class Trapezohedron(CrystalHabit):
     def _compute_vertices(self) -> np.ndarray:
         a = 1.0
         h = 0.7
-        return np.array([
-            # Equatorial square
-            [a, 0.0, 0.0], [0.0, a, 0.0],
-            [-a, 0.0, 0.0], [0.0, -a, 0.0],
-            # Upper square (rotated 45°)
-            [a*0.7, a*0.7, h], [-a*0.7, a*0.7, h],
-            [-a*0.7, -a*0.7, h], [a*0.7, -a*0.7, h],
-            # Lower square (rotated 45°)
-            [a*0.7, a*0.7, -h], [-a*0.7, a*0.7, -h],
-            [-a*0.7, -a*0.7, -h], [a*0.7, -a*0.7, -h],
-            # Apices
-            [0.0, 0.0, a*1.2], [0.0, 0.0, -a*1.2]
-        ], dtype=np.float64)
+        return np.array(
+            [
+                # Equatorial square
+                [a, 0.0, 0.0],
+                [0.0, a, 0.0],
+                [-a, 0.0, 0.0],
+                [0.0, -a, 0.0],
+                # Upper square (rotated 45°)
+                [a * 0.7, a * 0.7, h],
+                [-a * 0.7, a * 0.7, h],
+                [-a * 0.7, -a * 0.7, h],
+                [a * 0.7, -a * 0.7, h],
+                # Lower square (rotated 45°)
+                [a * 0.7, a * 0.7, -h],
+                [-a * 0.7, a * 0.7, -h],
+                [-a * 0.7, -a * 0.7, -h],
+                [a * 0.7, -a * 0.7, -h],
+                # Apices
+                [0.0, 0.0, a * 1.2],
+                [0.0, 0.0, -a * 1.2],
+            ],
+            dtype=np.float64,
+        )
 
     def _compute_faces(self) -> list[list[int]]:
         return [
             # Upper trapezohedral faces
-            [0, 4, 12], [0, 12, 7], [1, 4, 12], [1, 12, 5],
-            [2, 5, 12], [2, 12, 6], [3, 6, 12], [3, 12, 7],
+            [0, 4, 12],
+            [0, 12, 7],
+            [1, 4, 12],
+            [1, 12, 5],
+            [2, 5, 12],
+            [2, 12, 6],
+            [3, 6, 12],
+            [3, 12, 7],
             # Lower trapezohedral faces
-            [0, 8, 13], [0, 13, 11], [1, 8, 13], [1, 13, 9],
-            [2, 9, 13], [2, 13, 10], [3, 10, 13], [3, 13, 11],
+            [0, 8, 13],
+            [0, 13, 11],
+            [1, 8, 13],
+            [1, 13, 9],
+            [2, 9, 13],
+            [2, 13, 10],
+            [3, 10, 13],
+            [3, 13, 11],
             # Middle band
-            [0, 4, 8], [4, 1, 8], [8, 1, 9], [1, 5, 9],
-            [5, 2, 9], [9, 2, 10], [2, 6, 10], [6, 3, 10],
-            [10, 3, 11], [3, 7, 11], [7, 0, 11], [11, 0, 8]
+            [0, 4, 8],
+            [4, 1, 8],
+            [8, 1, 9],
+            [1, 5, 9],
+            [5, 2, 9],
+            [9, 2, 10],
+            [2, 6, 10],
+            [6, 3, 10],
+            [10, 3, 11],
+            [3, 7, 11],
+            [7, 0, 11],
+            [11, 0, 8],
         ]
 
 
@@ -164,11 +198,7 @@ class QuartzCrystal(CrystalHabit):
     """
 
     def __init__(
-        self,
-        scale: float = 1.0,
-        c_ratio: float = 2.5,
-        termination_angle: float = 38.2,
-        **params
+        self, scale: float = 1.0, c_ratio: float = 2.5, termination_angle: float = 38.2, **params
     ):
         """Initialize quartz crystal habit.
 
@@ -178,9 +208,7 @@ class QuartzCrystal(CrystalHabit):
             termination_angle: Angle of termination faces from horizontal (degrees).
                               Default 38.2° is typical for quartz r-faces.
         """
-        super().__init__(
-            scale, c_ratio=c_ratio, termination_angle=termination_angle, **params
-        )
+        super().__init__(scale, c_ratio=c_ratio, termination_angle=termination_angle, **params)
         self.c_ratio = c_ratio
         self.termination_angle = termination_angle
 
@@ -189,7 +217,7 @@ class QuartzCrystal(CrystalHabit):
         return "Quartz Crystal"
 
     def _compute_vertices(self) -> np.ndarray:
-        angles = np.linspace(0, 2*np.pi, 7)[:-1]  # 6 vertices per ring
+        angles = np.linspace(0, 2 * np.pi, 7)[:-1]  # 6 vertices per ring
         r = 1.0
 
         # Calculate termination height based on angle
@@ -270,34 +298,54 @@ class Pyritohedron(CrystalHabit):
         verts = []
 
         # (0, ±1, ±h)
-        verts.extend([
-            [0, 1, h], [0, 1, -h],
-            [0, -1, h], [0, -1, -h],
-        ])
+        verts.extend(
+            [
+                [0, 1, h],
+                [0, 1, -h],
+                [0, -1, h],
+                [0, -1, -h],
+            ]
+        )
 
         # (±h, 0, ±1)
-        verts.extend([
-            [h, 0, 1], [h, 0, -1],
-            [-h, 0, 1], [-h, 0, -1],
-        ])
+        verts.extend(
+            [
+                [h, 0, 1],
+                [h, 0, -1],
+                [-h, 0, 1],
+                [-h, 0, -1],
+            ]
+        )
 
         # (±1, ±h, 0)
-        verts.extend([
-            [1, h, 0], [1, -h, 0],
-            [-1, h, 0], [-1, -h, 0],
-        ])
+        verts.extend(
+            [
+                [1, h, 0],
+                [1, -h, 0],
+                [-1, h, 0],
+                [-1, -h, 0],
+            ]
+        )
 
         # (0, ±h, ±1)
-        verts.extend([
-            [0, h, 1], [0, -h, 1],
-            [0, h, -1], [0, -h, -1],
-        ])
+        verts.extend(
+            [
+                [0, h, 1],
+                [0, -h, 1],
+                [0, h, -1],
+                [0, -h, -1],
+            ]
+        )
 
         # (±1, 0, ±h)
-        verts.extend([
-            [1, 0, h], [1, 0, -h],
-            [-1, 0, h], [-1, 0, -h],
-        ])
+        verts.extend(
+            [
+                [1, 0, h],
+                [1, 0, -h],
+                [-1, 0, h],
+                [-1, 0, -h],
+            ]
+        )
 
         verts = np.array(verts, dtype=np.float64)
 
@@ -319,7 +367,6 @@ class Pyritohedron(CrystalHabit):
 
         # Group triangles by face normal
         face_groups: dict[tuple, list[set]] = {}
-        tol = 0.001
 
         for simplex in hull.simplices:
             v0, v1, v2 = verts[simplex]
@@ -371,7 +418,7 @@ class Pyritohedron(CrystalHabit):
                 angle = np.arctan2(np.dot(pt, v_axis), np.dot(pt, u))
                 angles.append(angle)
 
-            sorted_indices = [x for _, x in sorted(zip(angles, vert_list))]
+            sorted_indices = [x for _, x in sorted(zip(angles, vert_list, strict=False))]
             faces.append(sorted_indices)
 
         return faces

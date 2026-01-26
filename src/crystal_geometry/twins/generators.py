@@ -32,7 +32,7 @@ class CrystalComponent:
         vertices: np.ndarray,
         faces: list[list[int]],
         transform: np.ndarray | None = None,
-        component_id: int = 0
+        component_id: int = 0,
     ):
         self.vertices = np.asarray(vertices, dtype=np.float64)
         self.faces = faces
@@ -70,8 +70,8 @@ class TwinGeometry:
     def __init__(
         self,
         components: list[CrystalComponent],
-        render_mode: str = 'unified',
-        metadata: dict[str, Any] | None = None
+        render_mode: str = "unified",
+        metadata: dict[str, Any] | None = None,
     ):
         self.components = components
         self.render_mode = render_mode
@@ -128,10 +128,7 @@ class TwinGeometryGenerator(ABC):
 
     @abstractmethod
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
         """Generate geometry for a twin type.
 
@@ -146,10 +143,7 @@ class TwinGeometryGenerator(ABC):
         pass
 
 
-def _compute_halfspace_intersection(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray:
+def _compute_halfspace_intersection(normals: np.ndarray, distances: np.ndarray) -> np.ndarray:
     """Compute vertices from halfspace intersection.
 
     Uses scipy's HalfspaceIntersection internally.
@@ -177,7 +171,7 @@ def _compute_halfspace_intersection(
     bounds = [(-10.0, 10.0), (-10.0, 10.0), (-10.0, 10.0), (1e-10, None)]
 
     try:
-        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")
         if result.success and result.x[3] > 1e-10:
             interior_point = result.x[:3]
         else:
@@ -196,10 +190,7 @@ def _compute_halfspace_intersection(
         return _compute_vertices_direct(normals, distances)
 
 
-def _compute_vertices_direct(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray:
+def _compute_vertices_direct(normals: np.ndarray, distances: np.ndarray) -> np.ndarray:
     """Compute vertices by finding triple-plane intersections.
 
     Fallback method when scipy fails.
@@ -256,10 +247,7 @@ def _compute_vertices_direct(
 
 
 def _compute_face_vertices(
-    vertices: np.ndarray,
-    normals: np.ndarray,
-    distances: np.ndarray,
-    tolerance: float = 1e-5
+    vertices: np.ndarray, normals: np.ndarray, distances: np.ndarray, tolerance: float = 1e-5
 ) -> list[list[int]]:
     """Compute face vertex indices for each halfspace.
 
@@ -329,17 +317,14 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
     """
 
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
-        twin_axis = np.asarray(twin_info['axis'])
-        twin_angle = twin_info['angle']
-        twin_type = twin_info.get('type', 'contact')
+        twin_axis = np.asarray(twin_info["axis"])
+        twin_angle = twin_info["angle"]
+        twin_type = twin_info.get("type", "contact")
 
         # Determine number of components
-        if twin_type == 'cyclic':
+        if twin_type == "cyclic":
             n_components = int(round(360.0 / twin_angle))
         else:
             n_components = 2
@@ -380,22 +365,19 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
                 final_attribution.append(0)
 
         component = CrystalComponent(
-            vertices=vertices,
-            faces=faces,
-            transform=np.eye(4),
-            component_id=0
+            vertices=vertices, faces=faces, transform=np.eye(4), component_id=0
         )
 
         return TwinGeometry(
             components=[component],
-            render_mode='unified',
+            render_mode="unified",
             metadata={
-                'blend_mode': 'single',
-                'face_attribution': np.array(final_attribution, dtype=np.int32),
-                'n_original_components': n_components,
-                'twin_axis': twin_axis,
-                'twin_angle': twin_angle,
-            }
+                "blend_mode": "single",
+                "face_attribution": np.array(final_attribution, dtype=np.int32),
+                "n_original_components": n_components,
+                "twin_axis": twin_axis,
+                "twin_angle": twin_angle,
+            },
         )
 
 
@@ -410,13 +392,10 @@ class DualCrystalGeometryGenerator(TwinGeometryGenerator):
     """
 
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
-        twin_axis = np.asarray(twin_info['axis'])
-        twin_angle = twin_info['angle']
+        twin_axis = np.asarray(twin_info["axis"])
+        twin_angle = twin_info["angle"]
 
         # Crystal 1: Complete crystal at origin
         verts1 = _compute_halfspace_intersection(normals, distances)
@@ -425,10 +404,7 @@ class DualCrystalGeometryGenerator(TwinGeometryGenerator):
         faces1 = _compute_face_vertices(verts1, normals, distances)
 
         component1 = CrystalComponent(
-            vertices=verts1,
-            faces=faces1,
-            transform=np.eye(4),
-            component_id=0
+            vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
         )
 
         # Crystal 2: Complete rotated crystal
@@ -444,17 +420,17 @@ class DualCrystalGeometryGenerator(TwinGeometryGenerator):
             vertices=verts2,
             faces=faces2,
             transform=np.eye(4),  # Already rotated via normals
-            component_id=1
+            component_id=1,
         )
 
         return TwinGeometry(
             components=[component1, component2],
-            render_mode='separate',
+            render_mode="separate",
             metadata={
-                'blend_mode': 'overlay',
-                'twin_axis': twin_axis,
-                'twin_angle': twin_angle,
-            }
+                "blend_mode": "overlay",
+                "twin_axis": twin_axis,
+                "twin_angle": twin_angle,
+            },
         )
 
 
@@ -470,14 +446,11 @@ class VShapedGeometryGenerator(TwinGeometryGenerator):
     """
 
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
-        twin_axis = np.asarray(twin_info['axis'])
+        twin_axis = np.asarray(twin_info["axis"])
         twin_axis = twin_axis / np.linalg.norm(twin_axis)
-        twin_angle = twin_info['angle']
+        twin_angle = twin_info["angle"]
 
         # Composition plane passes through origin
         composition_offset = 0.0
@@ -497,32 +470,23 @@ class VShapedGeometryGenerator(TwinGeometryGenerator):
         faces2 = [list(face) for face in faces1]
 
         component1 = CrystalComponent(
-            vertices=verts1,
-            faces=faces1,
-            transform=np.eye(4),
-            component_id=0
+            vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
         )
 
         component2 = CrystalComponent(
-            vertices=verts2,
-            faces=faces2,
-            transform=np.eye(4),
-            component_id=1
+            vertices=verts2, faces=faces2, transform=np.eye(4), component_id=1
         )
 
         return TwinGeometry(
             components=[component1, component2],
-            render_mode='separate',
+            render_mode="separate",
             metadata={
-                'blend_mode': 'adjacent',
-                'composition_plane': {
-                    'normal': twin_axis,
-                    'offset': composition_offset
-                },
-                'twin_axis': twin_axis,
-                'twin_angle': twin_angle,
-                'transform': 'reflection',
-            }
+                "blend_mode": "adjacent",
+                "composition_plane": {"normal": twin_axis, "offset": composition_offset},
+                "twin_axis": twin_axis,
+                "twin_angle": twin_angle,
+                "transform": "reflection",
+            },
         )
 
 
@@ -543,13 +507,10 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
         self.use_unified = use_unified
 
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
-        twin_axis = np.asarray(twin_info['axis'])
-        twin_angle = twin_info['angle']
+        twin_axis = np.asarray(twin_info["axis"])
+        twin_angle = twin_info["angle"]
         n_components = int(round(360.0 / twin_angle))
 
         if self.use_unified:
@@ -577,22 +538,19 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
             faces = _compute_face_vertices(vertices, all_normals, all_distances)
 
             component = CrystalComponent(
-                vertices=vertices,
-                faces=faces,
-                transform=np.eye(4),
-                component_id=0
+                vertices=vertices, faces=faces, transform=np.eye(4), component_id=0
             )
 
             return TwinGeometry(
                 components=[component],
-                render_mode='unified',
+                render_mode="unified",
                 metadata={
-                    'blend_mode': 'cyclic',
-                    'face_attribution': np.array(face_attribution[:len(faces)], dtype=np.int32),
-                    'n_fold': n_components,
-                    'twin_axis': twin_axis,
-                    'twin_angle': twin_angle,
-                }
+                    "blend_mode": "cyclic",
+                    "face_attribution": np.array(face_attribution[: len(faces)], dtype=np.int32),
+                    "n_fold": n_components,
+                    "twin_axis": twin_axis,
+                    "twin_angle": twin_angle,
+                },
             )
         else:
             # Render each component separately
@@ -607,22 +565,21 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
                     continue
                 faces = _compute_face_vertices(verts, rotated_normals, distances)
 
-                components.append(CrystalComponent(
-                    vertices=verts,
-                    faces=faces,
-                    transform=np.eye(4),
-                    component_id=i
-                ))
+                components.append(
+                    CrystalComponent(
+                        vertices=verts, faces=faces, transform=np.eye(4), component_id=i
+                    )
+                )
 
             return TwinGeometry(
                 components=components,
-                render_mode='separate',
+                render_mode="separate",
                 metadata={
-                    'blend_mode': 'cyclic',
-                    'n_fold': n_components,
-                    'twin_axis': twin_axis,
-                    'twin_angle': twin_angle,
-                }
+                    "blend_mode": "cyclic",
+                    "n_fold": n_components,
+                    "twin_axis": twin_axis,
+                    "twin_angle": twin_angle,
+                },
             )
 
 
@@ -637,13 +594,10 @@ class SingleCrystalGeometryGenerator(TwinGeometryGenerator):
     """
 
     def generate(
-        self,
-        twin_info: dict[str, Any],
-        normals: np.ndarray,
-        distances: np.ndarray
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
     ) -> TwinGeometry:
-        twin_axis = twin_info.get('axis', np.array([0, 0, 1]))
-        twin_angle = twin_info.get('angle', 180)
+        twin_axis = twin_info.get("axis", np.array([0, 0, 1]))
+        twin_angle = twin_info.get("angle", 180)
 
         # Compute vertices from halfspace intersection
         vertices = _compute_halfspace_intersection(normals, distances)
@@ -654,32 +608,29 @@ class SingleCrystalGeometryGenerator(TwinGeometryGenerator):
         faces = _compute_face_vertices(vertices, normals, distances)
 
         component = CrystalComponent(
-            vertices=vertices,
-            faces=faces,
-            transform=np.eye(4),
-            component_id=0
+            vertices=vertices, faces=faces, transform=np.eye(4), component_id=0
         )
 
         return TwinGeometry(
             components=[component],
-            render_mode='single_crystal',
+            render_mode="single_crystal",
             metadata={
-                'blend_mode': 'single',
-                'description': 'Internal/electrical twin - external morphology unchanged',
-                'twin_axis': np.asarray(twin_axis),
-                'twin_angle': twin_angle,
-            }
+                "blend_mode": "single",
+                "description": "Internal/electrical twin - external morphology unchanged",
+                "twin_axis": np.asarray(twin_axis),
+                "twin_angle": twin_angle,
+            },
         )
 
 
 # Geometry generator registry
 GEOMETRY_GENERATORS: dict[str, TwinGeometryGenerator] = {
-    'unified': UnifiedGeometryGenerator(),
-    'dual_crystal': DualCrystalGeometryGenerator(),
-    'v_shaped': VShapedGeometryGenerator(),
-    'cyclic': CyclicGeometryGenerator(use_unified=True),
-    'cyclic_separate': CyclicGeometryGenerator(use_unified=False),
-    'single_crystal': SingleCrystalGeometryGenerator(),
+    "unified": UnifiedGeometryGenerator(),
+    "dual_crystal": DualCrystalGeometryGenerator(),
+    "v_shaped": VShapedGeometryGenerator(),
+    "cyclic": CyclicGeometryGenerator(use_unified=True),
+    "cyclic_separate": CyclicGeometryGenerator(use_unified=False),
+    "single_crystal": SingleCrystalGeometryGenerator(),
 }
 
 
@@ -706,10 +657,8 @@ def get_generator(render_mode: str) -> TwinGeometryGenerator:
         ValueError: If render_mode is not recognized
     """
     if render_mode not in GEOMETRY_GENERATORS:
-        available = ', '.join(sorted(GEOMETRY_GENERATORS.keys()))
-        raise ValueError(
-            f"Unknown render mode: '{render_mode}'. Available: {available}"
-        )
+        available = ", ".join(sorted(GEOMETRY_GENERATORS.keys()))
+        raise ValueError(f"Unknown render mode: '{render_mode}'. Available: {available}")
     return GEOMETRY_GENERATORS[render_mode]
 
 

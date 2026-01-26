@@ -4,22 +4,14 @@ import numpy as np
 import pytest
 
 from crystal_geometry.habits import (
-    GEMSTONE_HABITS,
     HABIT_REGISTRY,
     Barrel,
-    Cube,
     CrystalHabit,
-    Dodecahedron,
-    HexagonalBipyramid,
+    Cube,
     HexagonalPrism,
     Octahedron,
-    OrthorhombicPrism,
     Pyritohedron,
     QuartzCrystal,
-    Tabular,
-    TetragonalBipyramid,
-    TetragonalPrism,
-    Trapezohedron,
     get_gemstone_habits,
     get_habit,
     list_habits,
@@ -33,32 +25,32 @@ class TestHabitRegistry:
         """Should list all available habits."""
         habits = list_habits()
         assert len(habits) >= 14
-        assert 'octahedron' in habits
-        assert 'cube' in habits
-        assert 'quartz_crystal' in habits
+        assert "octahedron" in habits
+        assert "cube" in habits
+        assert "quartz_crystal" in habits
 
     def test_get_habit_valid(self):
         """Should get valid habits."""
-        habit = get_habit('octahedron')
+        habit = get_habit("octahedron")
         assert isinstance(habit, CrystalHabit)
         assert isinstance(habit, Octahedron)
 
     def test_get_habit_invalid(self):
         """Should raise for unknown habit."""
         with pytest.raises(ValueError, match="Unknown habit"):
-            get_habit('nonexistent_habit')
+            get_habit("nonexistent_habit")
 
     def test_get_habit_normalized_name(self):
         """Should normalize habit names."""
         # Spaces and hyphens should be converted to underscores
-        habit1 = get_habit('hexagonal_prism')
-        habit2 = get_habit('hexagonal-prism')
-        habit3 = get_habit('hexagonal prism')
-        assert type(habit1) == type(habit2) == type(habit3)
+        habit1 = get_habit("hexagonal_prism")
+        habit2 = get_habit("hexagonal-prism")
+        habit3 = get_habit("hexagonal prism")
+        assert type(habit1) is type(habit2) is type(habit3)
 
     def test_get_habit_with_scale(self):
         """Should apply scale parameter."""
-        habit = get_habit('cube', scale=2.0)
+        habit = get_habit("cube", scale=2.0)
         assert habit.scale == 2.0
 
         # Vertices should be scaled
@@ -71,29 +63,29 @@ class TestGemstoneHabits:
 
     def test_get_gemstone_habits(self):
         """Should get habits for known gemstones."""
-        habits = get_gemstone_habits('diamond')
-        assert 'octahedron' in habits
+        habits = get_gemstone_habits("diamond")
+        assert "octahedron" in habits
 
-        habits = get_gemstone_habits('quartz')
-        assert 'quartz_crystal' in habits
+        habits = get_gemstone_habits("quartz")
+        assert "quartz_crystal" in habits
 
     def test_get_gemstone_habits_default(self):
         """Should return default for unknown gemstones."""
-        habits = get_gemstone_habits('unknown_gem')
-        assert habits == ['cube']
+        habits = get_gemstone_habits("unknown_gem")
+        assert habits == ["cube"]
 
 
 class TestBaseHabitInterface:
     """Tests for CrystalHabit base class interface."""
 
-    @pytest.mark.parametrize('habit_name', list(HABIT_REGISTRY.keys()))
+    @pytest.mark.parametrize("habit_name", list(HABIT_REGISTRY.keys()))
     def test_habit_has_name(self, habit_name):
         """All habits should have a name property."""
         habit = get_habit(habit_name)
         assert habit.name
         assert isinstance(habit.name, str)
 
-    @pytest.mark.parametrize('habit_name', list(HABIT_REGISTRY.keys()))
+    @pytest.mark.parametrize("habit_name", list(HABIT_REGISTRY.keys()))
     def test_habit_has_vertices(self, habit_name):
         """All habits should produce valid vertices."""
         habit = get_habit(habit_name)
@@ -102,7 +94,7 @@ class TestBaseHabitInterface:
         assert vertices.shape[1] == 3
         assert len(vertices) >= 4
 
-    @pytest.mark.parametrize('habit_name', list(HABIT_REGISTRY.keys()))
+    @pytest.mark.parametrize("habit_name", list(HABIT_REGISTRY.keys()))
     def test_habit_has_faces(self, habit_name):
         """All habits should produce valid faces."""
         habit = get_habit(habit_name)
@@ -117,7 +109,7 @@ class TestBaseHabitInterface:
             for idx in face:
                 assert 0 <= idx < n_verts
 
-    @pytest.mark.parametrize('habit_name', list(HABIT_REGISTRY.keys()))
+    @pytest.mark.parametrize("habit_name", list(HABIT_REGISTRY.keys()))
     def test_habit_get_face_vertices(self, habit_name):
         """get_face_vertices should return coordinate arrays."""
         habit = get_habit(habit_name)
@@ -128,7 +120,7 @@ class TestBaseHabitInterface:
             assert isinstance(fv, np.ndarray)
             assert fv.shape[1] == 3
 
-    @pytest.mark.parametrize('habit_name', list(HABIT_REGISTRY.keys()))
+    @pytest.mark.parametrize("habit_name", list(HABIT_REGISTRY.keys()))
     def test_habit_get_halfspaces(self, habit_name):
         """get_halfspaces should return normals and distances."""
         habit = get_habit(habit_name)
@@ -244,8 +236,8 @@ class TestBarrel:
         vertices = habit.vertices
 
         # Top vertices (6-11) should have smaller x, y than bottom
-        bottom_r = np.mean(np.sqrt(vertices[:6, 0]**2 + vertices[:6, 1]**2))
-        top_r = np.mean(np.sqrt(vertices[6:, 0]**2 + vertices[6:, 1]**2))
+        bottom_r = np.mean(np.sqrt(vertices[:6, 0] ** 2 + vertices[:6, 1] ** 2))
+        top_r = np.mean(np.sqrt(vertices[6:, 0] ** 2 + vertices[6:, 1] ** 2))
 
         assert top_r < bottom_r
 

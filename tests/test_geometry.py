@@ -26,6 +26,7 @@ from crystal_geometry import (
 # LatticeParams Tests
 # =============================================================================
 
+
 class TestLatticeParams:
     """Test LatticeParams dataclass."""
 
@@ -53,32 +54,33 @@ class TestLatticeParams:
 # Symmetry Tests
 # =============================================================================
 
+
 class TestSymmetry:
     """Test symmetry operations."""
 
     def test_cubic_point_group_m3m(self):
         """Test m3m point group has 48 operations."""
-        ops = get_point_group_operations('m3m')
+        ops = get_point_group_operations("m3m")
         assert len(ops) == 48
 
     def test_cubic_point_group_432(self):
         """Test 432 point group has 24 operations."""
-        ops = get_point_group_operations('432')
+        ops = get_point_group_operations("432")
         assert len(ops) == 24
 
     def test_triclinic_point_group_1(self):
         """Test point group 1 has 1 operation (identity)."""
-        ops = get_point_group_operations('1')
+        ops = get_point_group_operations("1")
         assert len(ops) == 1
 
     def test_triclinic_point_group_minus1(self):
         """Test point group -1 has 2 operations."""
-        ops = get_point_group_operations('-1')
+        ops = get_point_group_operations("-1")
         assert len(ops) == 2
 
     def test_equivalent_faces_octahedron(self):
         """Test {111} in m3m generates 8 faces."""
-        faces = generate_equivalent_faces(1, 1, 1, 'm3m')
+        faces = generate_equivalent_faces(1, 1, 1, "m3m")
         assert len(faces) == 8
         # All combinations of (+1, +1, +1)
         for h, k, l in faces:
@@ -86,12 +88,12 @@ class TestSymmetry:
 
     def test_equivalent_faces_cube(self):
         """Test {100} in m3m generates 6 faces."""
-        faces = generate_equivalent_faces(1, 0, 0, 'm3m')
+        faces = generate_equivalent_faces(1, 0, 0, "m3m")
         assert len(faces) == 6
 
     def test_equivalent_faces_dodecahedron(self):
         """Test {110} in m3m generates 12 faces."""
-        faces = generate_equivalent_faces(1, 1, 0, 'm3m')
+        faces = generate_equivalent_faces(1, 1, 0, "m3m")
         assert len(faces) == 12
 
     def test_miller_to_normal_cubic(self):
@@ -110,6 +112,7 @@ class TestSymmetry:
 # =============================================================================
 # Geometry Generation Tests
 # =============================================================================
+
 
 class TestGeometryGeneration:
     """Test geometry generation functions."""
@@ -158,6 +161,7 @@ class TestGeometryGeneration:
 # =============================================================================
 # CrystalGeometry Tests
 # =============================================================================
+
 
 class TestCrystalGeometry:
     """Test CrystalGeometry dataclass."""
@@ -208,16 +212,17 @@ class TestCrystalGeometry:
         """Test conversion to dictionary."""
         geom = create_octahedron()
         d = geom.to_dict()
-        assert 'vertices' in d
-        assert 'faces' in d
-        assert 'face_normals' in d
-        assert len(d['vertices']) == 6
-        assert len(d['faces']) == 8
+        assert "vertices" in d
+        assert "faces" in d
+        assert "face_normals" in d
+        assert len(d["vertices"]) == 6
+        assert len(d["faces"]) == 8
 
 
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestIntegration:
     """Integration tests for real crystal forms."""
@@ -257,6 +262,7 @@ class TestIntegration:
 # Twin Integration Tests
 # =============================================================================
 
+
 class TestTwinIntegration:
     """Test twin integration in cdl_to_geometry."""
 
@@ -265,10 +271,10 @@ class TestTwinIntegration:
         from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, TwinSpec
 
         desc = CrystalDescription(
-            system='cubic',
-            point_group='m3m',
+            system="cubic",
+            point_group="m3m",
             forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
-            twin=TwinSpec(law='spinel_law'),
+            twin=TwinSpec(law="spinel_law"),
         )
 
         geom = cdl_to_geometry(desc)
@@ -276,8 +282,8 @@ class TestTwinIntegration:
         assert len(geom.vertices) >= 4
         assert len(geom.faces) >= 4
         assert geom.twin_metadata is not None
-        assert geom.twin_metadata.twin_law == 'Spinel Law (Macle)'
-        assert geom.twin_metadata.render_mode == 'unified'
+        assert geom.twin_metadata.twin_law == "Spinel Law (Macle)"
+        assert geom.twin_metadata.render_mode == "unified"
 
     def test_brazil_twin(self):
         """Test Brazil twin (quartz) - uses cubic octahedron as proxy."""
@@ -285,34 +291,34 @@ class TestTwinIntegration:
 
         # Use cubic octahedron as a simple test case for Brazil twin
         desc = CrystalDescription(
-            system='cubic',
-            point_group='m3m',
+            system="cubic",
+            point_group="m3m",
             forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
-            twin=TwinSpec(law='brazil'),
+            twin=TwinSpec(law="brazil"),
         )
 
         geom = cdl_to_geometry(desc)
         assert len(geom.vertices) >= 4
         assert len(geom.faces) >= 4
         assert geom.twin_metadata is not None
-        assert 'Brazil' in geom.twin_metadata.twin_law
-        assert geom.twin_metadata.render_mode == 'dual_crystal'
+        assert "Brazil" in geom.twin_metadata.twin_law
+        assert geom.twin_metadata.render_mode == "dual_crystal"
 
     def test_custom_twin(self):
         """Test custom twin axis/angle."""
         from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, TwinSpec
 
         desc = CrystalDescription(
-            system='cubic',
-            point_group='m3m',
+            system="cubic",
+            point_group="m3m",
             forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
-            twin=TwinSpec(axis=(1, 1, 1), angle=180.0, twin_type='contact'),
+            twin=TwinSpec(axis=(1, 1, 1), angle=180.0, twin_type="contact"),
         )
 
         geom = cdl_to_geometry(desc)
         assert len(geom.vertices) >= 4
         assert geom.twin_metadata is not None
-        assert geom.twin_metadata.twin_law == 'custom'
+        assert geom.twin_metadata.twin_law == "custom"
 
     def test_no_twin(self):
         """Test geometry without twin has no twin_metadata."""
@@ -325,6 +331,7 @@ class TestTwinIntegration:
 # Modification Integration Tests
 # =============================================================================
 
+
 class TestModificationIntegration:
     """Test modification integration in cdl_to_geometry."""
 
@@ -333,10 +340,10 @@ class TestModificationIntegration:
         from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, Modification
 
         desc = CrystalDescription(
-            system='cubic',
-            point_group='m3m',
+            system="cubic",
+            point_group="m3m",
             forms=[CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0)],
-            modifications=[Modification(type='elongate', params={'axis': 'c', 'ratio': 2.0})],
+            modifications=[Modification(type="elongate", params={"axis": "c", "ratio": 2.0})],
         )
 
         geom = cdl_to_geometry(desc)
@@ -355,13 +362,13 @@ class TestModificationIntegration:
         # Use hexagonal prism with correct Miller-Bravais notation: h+k+i=0
         # {10-10} -> h=1, k=0, i=-1, l=0
         desc = CrystalDescription(
-            system='hexagonal',
-            point_group='6/mmm',
+            system="hexagonal",
+            point_group="6/mmm",
             forms=[
                 CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0),  # Use 3-index for simplicity
                 CrystalForm(miller=MillerIndex(0, 0, 1), scale=1.5),
             ],
-            modifications=[Modification(type='taper', params={'direction': '+c', 'factor': 0.5})],
+            modifications=[Modification(type="taper", params={"direction": "+c", "factor": 0.5})],
         )
 
         geom = cdl_to_geometry(desc)
@@ -373,8 +380,8 @@ class TestModificationIntegration:
         bot_verts = geom.vertices[geom.vertices[:, 2] < z_mid]
 
         if len(top_verts) > 0 and len(bot_verts) > 0:
-            top_extent = np.sqrt(top_verts[:, 0]**2 + top_verts[:, 1]**2).max()
-            bot_extent = np.sqrt(bot_verts[:, 0]**2 + bot_verts[:, 1]**2).max()
+            top_extent = np.sqrt(top_verts[:, 0] ** 2 + top_verts[:, 1] ** 2).max()
+            bot_extent = np.sqrt(bot_verts[:, 0] ** 2 + bot_verts[:, 1] ** 2).max()
             assert top_extent < bot_extent
 
     def test_multiple_modifications(self):
@@ -382,12 +389,12 @@ class TestModificationIntegration:
         from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, Modification
 
         desc = CrystalDescription(
-            system='cubic',
-            point_group='m3m',
+            system="cubic",
+            point_group="m3m",
             forms=[CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0)],
             modifications=[
-                Modification(type='elongate', params={'axis': 'c', 'ratio': 2.0}),
-                Modification(type='taper', params={'direction': '+c', 'factor': 0.5}),
+                Modification(type="elongate", params={"axis": "c", "ratio": 2.0}),
+                Modification(type="taper", params={"direction": "+c", "factor": 0.5}),
             ],
         )
 

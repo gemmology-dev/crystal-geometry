@@ -42,10 +42,7 @@ def _spatial_hash_key(vertex: np.ndarray, cell_size: float) -> tuple[int, int, i
 
 
 @prefer_native
-def _find_interior_point(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray | None:
+def _find_interior_point(normals: np.ndarray, distances: np.ndarray) -> np.ndarray | None:
     """Find interior point using linear programming (Chebyshev center).
 
     Finds the center of the largest ball that fits inside the polyhedron
@@ -78,7 +75,7 @@ def _find_interior_point(
     bounds = [(-10.0, 10.0), (-10.0, 10.0), (-10.0, 10.0), (1e-10, None)]
 
     try:
-        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")
 
         if result.success and result.x[3] > 1e-10:
             return result.x[:3]
@@ -88,10 +85,7 @@ def _find_interior_point(
     return None
 
 
-def _iterative_interior_point(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray | None:
+def _iterative_interior_point(normals: np.ndarray, distances: np.ndarray) -> np.ndarray | None:
     """Find interior point by iterative shrinking.
 
     Fallback method when linear programming fails.
@@ -149,7 +143,7 @@ def _iterative_interior_point(
 def halfspace_intersection_3d(
     normals: list[np.ndarray] | np.ndarray,
     distances: list[float] | np.ndarray,
-    interior_point: np.ndarray | None = None
+    interior_point: np.ndarray | None = None,
 ) -> np.ndarray | None:
     """Compute intersection of half-spaces in 3D.
 
@@ -197,10 +191,7 @@ def halfspace_intersection_3d(
 
 
 @prefer_native
-def _deduplicate_vertices(
-    vertices: np.ndarray,
-    tolerance: float = 1e-8
-) -> np.ndarray:
+def _deduplicate_vertices(vertices: np.ndarray, tolerance: float = 1e-8) -> np.ndarray:
     """Remove duplicate vertices using spatial hashing for O(n) performance.
 
     Uses a hash grid to achieve approximately O(n) complexity by only
@@ -252,10 +243,7 @@ def _deduplicate_vertices(
 
 @prefer_native
 def compute_face_vertices(
-    vertices: np.ndarray,
-    normal: np.ndarray,
-    distance: float,
-    tolerance: float = 1e-6
+    vertices: np.ndarray, normal: np.ndarray, distance: float, tolerance: float = 1e-6
 ) -> list[int]:
     """Find vertices that lie on a face plane.
 
@@ -310,8 +298,7 @@ def compute_face_vertices(
 
 
 def _build_halfspaces(
-    desc: CrystalDescription,
-    lattice: np.ndarray
+    desc: CrystalDescription, lattice: np.ndarray
 ) -> tuple[list[np.ndarray], list[float], list[int], list[tuple[int, int, int]]]:
     """Build halfspaces from CDL forms.
 
@@ -394,7 +381,7 @@ def _generate_base_geometry(
         face_normals=face_normals_list,
         face_forms=final_face_forms,
         face_millers=final_face_millers,
-        forms=forms
+        forms=forms,
     )
 
 
@@ -448,10 +435,10 @@ def _generate_twinned_geometry(
 
     # Build twin_info dict for generator
     twin_info = {
-        'axis': twin_axis,
-        'angle': twin_angle,
-        'type': twin_type,
-        'n_fold': twin_spec.count if twin_spec.count > 2 else None,
+        "axis": twin_axis,
+        "angle": twin_angle,
+        "type": twin_type,
+        "n_fold": twin_spec.count if twin_spec.count > 2 else None,
     }
 
     # Generate twinned geometry
@@ -465,8 +452,7 @@ def _generate_twinned_geometry(
     all_vertices = twin_result.get_all_vertices()
     all_vertices = _deduplicate_vertices(all_vertices)
 
-    # Get faces from the twin result
-    all_faces = twin_result.get_all_faces()
+    # Get face attribution from the twin result
     face_attribution = twin_result.get_face_attribution()
 
     # Build face data
@@ -477,12 +463,10 @@ def _generate_twinned_geometry(
     component_ids = []
 
     # For unified geometry, faces are already computed
-    if twin_result.render_mode == 'unified' and twin_result.components:
+    if twin_result.render_mode == "unified" and twin_result.components:
         component = twin_result.components[0]
         for i, face in enumerate(component.faces):
             if len(face) >= 3:
-                # Recompute face indices for deduplicated vertices
-                face_center = np.mean(component.vertices[face], axis=0)
                 # Find face normal from original normals
                 form_idx = i % len(normals)
                 normal = normals[form_idx]
@@ -499,7 +483,6 @@ def _generate_twinned_geometry(
         for comp_idx, component in enumerate(twin_result.components):
             # Get 3x3 rotation from 4x4 transform
             R = component.transform[:3, :3]
-            comp_vertices = component.get_transformed_vertices()
 
             for i in range(len(normals)):
                 rotated_normal = R @ normals_arr[i]
@@ -533,10 +516,7 @@ def _generate_twinned_geometry(
     )
 
 
-def cdl_to_geometry(
-    desc: CrystalDescription,
-    c_ratio: float = 1.0
-) -> CrystalGeometry:
+def cdl_to_geometry(desc: CrystalDescription, c_ratio: float = 1.0) -> CrystalGeometry:
     """Convert CDL description to 3D geometry.
 
     Args:
@@ -549,9 +529,7 @@ def cdl_to_geometry(
     lattice = get_lattice_for_system(desc.system, c_ratio)
 
     # Build halfspaces from forms
-    normals, distances, face_form_indices, face_millers = _build_halfspaces(
-        desc, lattice
-    )
+    normals, distances, face_form_indices, face_millers = _build_halfspaces(desc, lattice)
 
     # Generate geometry (twinned or base)
     if desc.twin is not None:
@@ -566,6 +544,7 @@ def cdl_to_geometry(
     # Apply modifications if present
     if desc.modifications:
         from .modifications import apply_modifications
+
         geometry = CrystalGeometry(
             vertices=apply_modifications(geometry.vertices, desc.modifications),
             faces=geometry.faces,
@@ -631,8 +610,7 @@ def create_dodecahedron(scale: float = 1.0) -> CrystalGeometry:
 
 
 def create_truncated_octahedron(
-    octahedron_scale: float = 1.0,
-    cube_scale: float = 1.3
+    octahedron_scale: float = 1.0, cube_scale: float = 1.3
 ) -> CrystalGeometry:
     """Create a truncated octahedron (cuboctahedron-like).
 
@@ -643,6 +621,4 @@ def create_truncated_octahedron(
     Returns:
         CrystalGeometry
     """
-    return cdl_string_to_geometry(
-        f"cubic[m3m]:{{111}}@{octahedron_scale} + {{100}}@{cube_scale}"
-    )
+    return cdl_string_to_geometry(f"cubic[m3m]:{{111}}@{octahedron_scale} + {{100}}@{cube_scale}")

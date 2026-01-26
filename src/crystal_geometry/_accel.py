@@ -19,13 +19,14 @@ Usage:
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 # Lazy-loaded state
 _NATIVE_AVAILABLE: bool | None = None
 _native_module: Any = None
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def _check_native() -> bool:
@@ -39,8 +40,9 @@ def _check_native() -> bool:
     if _NATIVE_AVAILABLE is None:
         try:
             from . import _native as native
+
             # Verify the module has the expected functions (not just a directory import)
-            if hasattr(native, 'halfspace_intersection') or hasattr(native, '__version__'):
+            if hasattr(native, "halfspace_intersection") or hasattr(native, "__version__"):
                 _native_module = native
                 _NATIVE_AVAILABLE = True
             else:
@@ -65,6 +67,7 @@ def prefer_native(python_impl: F) -> F:
     Returns:
         Wrapped function that dispatches to native or Python implementation
     """
+
     @functools.wraps(python_impl)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if _check_native():
@@ -100,7 +103,8 @@ def get_backend_info() -> dict[str, Any]:
         info["native_available"] = True
         info["native_version"] = getattr(_native_module, "__version__", "unknown")
         info["native_functions"] = [
-            name for name in dir(_native_module)
+            name
+            for name in dir(_native_module)
             if not name.startswith("_") and callable(getattr(_native_module, name))
         ]
 

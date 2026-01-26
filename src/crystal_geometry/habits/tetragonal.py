@@ -35,12 +35,19 @@ class TetragonalPrism(CrystalHabit):
         h = self.c_ratio
         # Normalize to maintain reasonable aspect ratio
         s = 1.0 / np.sqrt(2)
-        return np.array([
-            [-a*s, -a*s, -h/2], [a*s, -a*s, -h/2],
-            [a*s, a*s, -h/2], [-a*s, a*s, -h/2],
-            [-a*s, -a*s, h/2], [a*s, -a*s, h/2],
-            [a*s, a*s, h/2], [-a*s, a*s, h/2]
-        ], dtype=np.float64)
+        return np.array(
+            [
+                [-a * s, -a * s, -h / 2],
+                [a * s, -a * s, -h / 2],
+                [a * s, a * s, -h / 2],
+                [-a * s, a * s, -h / 2],
+                [-a * s, -a * s, h / 2],
+                [a * s, -a * s, h / 2],
+                [a * s, a * s, h / 2],
+                [-a * s, a * s, h / 2],
+            ],
+            dtype=np.float64,
+        )
 
     def _compute_faces(self) -> list[list[int]]:
         return [
@@ -49,7 +56,7 @@ class TetragonalPrism(CrystalHabit):
             [0, 1, 5, 4],  # Front
             [2, 3, 7, 6],  # Back
             [0, 4, 7, 3],  # Left
-            [1, 2, 6, 5]   # Right
+            [1, 2, 6, 5],  # Right
         ]
 
 
@@ -77,18 +84,30 @@ class TetragonalBipyramid(CrystalHabit):
     def _compute_vertices(self) -> np.ndarray:
         a = 1.0
         h = self.apex_ratio
-        return np.array([
-            # Equatorial square
-            [a, 0.0, 0.0], [0.0, a, 0.0],
-            [-a, 0.0, 0.0], [0.0, -a, 0.0],
-            # Apices
-            [0.0, 0.0, h], [0.0, 0.0, -h]
-        ], dtype=np.float64)
+        return np.array(
+            [
+                # Equatorial square
+                [a, 0.0, 0.0],
+                [0.0, a, 0.0],
+                [-a, 0.0, 0.0],
+                [0.0, -a, 0.0],
+                # Apices
+                [0.0, 0.0, h],
+                [0.0, 0.0, -h],
+            ],
+            dtype=np.float64,
+        )
 
     def _compute_faces(self) -> list[list[int]]:
         return [
             # Upper pyramid faces (apex at index 4)
-            [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4],
+            [0, 1, 4],
+            [1, 2, 4],
+            [2, 3, 4],
+            [3, 0, 4],
             # Lower pyramid faces (apex at index 5)
-            [1, 0, 5], [2, 1, 5], [3, 2, 5], [0, 3, 5]
+            [1, 0, 5],
+            [2, 1, 5],
+            [3, 2, 5],
+            [0, 3, 5],
         ]

@@ -33,11 +33,13 @@ def rotation_matrix_axis_angle(axis: np.ndarray, angle_deg: float) -> np.ndarray
 
     x, y, z = axis
 
-    return np.array([
-        [t*x*x + c,   t*x*y - s*z, t*x*z + s*y],
-        [t*x*y + s*z, t*y*y + c,   t*y*z - s*x],
-        [t*x*z - s*y, t*y*z + s*x, t*z*z + c]
-    ])
+    return np.array(
+        [
+            [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+            [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+            [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+        ]
+    )
 
 
 def rotation_matrix_4x4(axis: np.ndarray, angle_deg: float) -> np.ndarray:
@@ -93,17 +95,17 @@ def reflection_matrix(normal: np.ndarray) -> np.ndarray:
 
 # Common crystallographic directions (normalized)
 DIRECTIONS: dict[str, np.ndarray] = {
-    '[100]': np.array([1.0, 0.0, 0.0]),
-    '[010]': np.array([0.0, 1.0, 0.0]),
-    '[001]': np.array([0.0, 0.0, 1.0]),
-    '[110]': np.array([1.0, 1.0, 0.0]) / np.sqrt(2),
-    '[111]': np.array([1.0, 1.0, 1.0]) / np.sqrt(3),
-    '[-111]': np.array([-1.0, 1.0, 1.0]) / np.sqrt(3),
-    '[1-11]': np.array([1.0, -1.0, 1.0]) / np.sqrt(3),
-    '[11-1]': np.array([1.0, 1.0, -1.0]) / np.sqrt(3),
-    '[1-10]': np.array([1.0, -1.0, 0.0]) / np.sqrt(2),
-    '[11-2]': np.array([1.0, 1.0, -2.0]) / np.sqrt(6),
-    '[021]': np.array([0.0, 2.0, 1.0]) / np.sqrt(5),
+    "[100]": np.array([1.0, 0.0, 0.0]),
+    "[010]": np.array([0.0, 1.0, 0.0]),
+    "[001]": np.array([0.0, 0.0, 1.0]),
+    "[110]": np.array([1.0, 1.0, 0.0]) / np.sqrt(2),
+    "[111]": np.array([1.0, 1.0, 1.0]) / np.sqrt(3),
+    "[-111]": np.array([-1.0, 1.0, 1.0]) / np.sqrt(3),
+    "[1-11]": np.array([1.0, -1.0, 1.0]) / np.sqrt(3),
+    "[11-1]": np.array([1.0, 1.0, -1.0]) / np.sqrt(3),
+    "[1-10]": np.array([1.0, -1.0, 0.0]) / np.sqrt(2),
+    "[11-2]": np.array([1.0, 1.0, -2.0]) / np.sqrt(6),
+    "[021]": np.array([0.0, 2.0, 1.0]) / np.sqrt(5),
 }
 
 

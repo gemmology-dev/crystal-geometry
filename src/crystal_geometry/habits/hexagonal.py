@@ -32,17 +32,17 @@ class HexagonalPrism(CrystalHabit):
 
     def _compute_vertices(self) -> np.ndarray:
         # Hexagonal base vertices
-        angles = np.linspace(0, 2*np.pi, 7)[:-1]  # 6 vertices
+        angles = np.linspace(0, 2 * np.pi, 7)[:-1]  # 6 vertices
         r = 1.0
         h = self.c_ratio
 
         verts = []
         # Bottom hexagon
         for a in angles:
-            verts.append([r * np.cos(a), r * np.sin(a), -h/2])
+            verts.append([r * np.cos(a), r * np.sin(a), -h / 2])
         # Top hexagon
         for a in angles:
-            verts.append([r * np.cos(a), r * np.sin(a), h/2])
+            verts.append([r * np.cos(a), r * np.sin(a), h / 2])
 
         return np.array(verts, dtype=np.float64)
 
@@ -81,7 +81,7 @@ class HexagonalBipyramid(CrystalHabit):
         return "Hexagonal Bipyramid"
 
     def _compute_vertices(self) -> np.ndarray:
-        angles = np.linspace(0, 2*np.pi, 7)[:-1]
+        angles = np.linspace(0, 2 * np.pi, 7)[:-1]
         r = 1.0
         h = self.apex_ratio
 
@@ -90,7 +90,7 @@ class HexagonalBipyramid(CrystalHabit):
         for a in angles:
             verts.append([r * np.cos(a), r * np.sin(a), 0.0])
         # Apex vertices
-        verts.append([0.0, 0.0, h])   # Top apex (index 6)
+        verts.append([0.0, 0.0, h])  # Top apex (index 6)
         verts.append([0.0, 0.0, -h])  # Bottom apex (index 7)
 
         return np.array(verts, dtype=np.float64)
