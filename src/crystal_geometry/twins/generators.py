@@ -206,7 +206,7 @@ def _compute_vertices_direct(normals: np.ndarray, distances: np.ndarray) -> np.n
     normals = np.ascontiguousarray(normals, dtype=np.float64)
     distances = np.ascontiguousarray(distances, dtype=np.float64)
 
-    vertices = []
+    vertices: list[np.ndarray] = []
     n = len(normals)
     tolerance = 1e-6
     tolerance_sq = tolerance * tolerance
@@ -330,9 +330,9 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
             n_components = 2
 
         # Collect all halfspaces from all rotated orientations
-        all_normals = []
-        all_distances = []
-        face_attribution = []
+        all_normals_list: list[np.ndarray] = []
+        all_distances_list: list[float] = []
+        face_attribution: list[int] = []
 
         for comp_id in range(n_components):
             angle = twin_angle * comp_id
@@ -340,12 +340,12 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
 
             for normal, dist in zip(normals, distances, strict=False):
                 rotated_normal = R @ normal
-                all_normals.append(rotated_normal)
-                all_distances.append(dist)
+                all_normals_list.append(rotated_normal)
+                all_distances_list.append(dist)
                 face_attribution.append(comp_id)
 
-        all_normals = np.array(all_normals)
-        all_distances = np.array(all_distances)
+        all_normals = np.array(all_normals_list)
+        all_distances = np.array(all_distances_list)
 
         # Compute unified intersection
         vertices = _compute_halfspace_intersection(all_normals, all_distances)
@@ -515,9 +515,9 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
 
         if self.use_unified:
             # Use unified approach (halfspace intersection)
-            all_normals = []
-            all_distances = []
-            face_attribution = []
+            all_normals_list: list[np.ndarray] = []
+            all_distances_list: list[float] = []
+            face_attribution: list[int] = []
 
             for comp_id in range(n_components):
                 angle = twin_angle * comp_id
@@ -525,12 +525,12 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
 
                 for normal, dist in zip(normals, distances, strict=False):
                     rotated_normal = R @ normal
-                    all_normals.append(rotated_normal)
-                    all_distances.append(dist)
+                    all_normals_list.append(rotated_normal)
+                    all_distances_list.append(dist)
                     face_attribution.append(comp_id)
 
-            all_normals = np.array(all_normals)
-            all_distances = np.array(all_distances)
+            all_normals = np.array(all_normals_list)
+            all_distances = np.array(all_distances_list)
 
             vertices = _compute_halfspace_intersection(all_normals, all_distances)
             if len(vertices) < 4:

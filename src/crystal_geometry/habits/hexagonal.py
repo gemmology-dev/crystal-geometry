@@ -4,6 +4,8 @@ Hexagonal crystal system habits.
 Includes hexagonal prism and hexagonal bipyramid.
 """
 
+from typing import Any
+
 import numpy as np
 
 from .base import CrystalHabit
@@ -16,7 +18,7 @@ class HexagonalPrism(CrystalHabit):
     6 rectangular prism faces + 2 hexagonal end faces
     """
 
-    def __init__(self, scale: float = 1.0, c_ratio: float = 1.5, **params):
+    def __init__(self, scale: float = 1.0, c_ratio: float = 1.5, **params: Any) -> None:
         """Initialize hexagonal prism.
 
         Args:
@@ -66,7 +68,7 @@ class HexagonalBipyramid(CrystalHabit):
     12 triangular faces meeting at two apices
     """
 
-    def __init__(self, scale: float = 1.0, apex_ratio: float = 1.2, **params):
+    def __init__(self, scale: float = 1.0, apex_ratio: float = 1.2, **params: Any) -> None:
         """Initialize hexagonal bipyramid.
 
         Args:

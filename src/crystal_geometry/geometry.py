@@ -16,7 +16,7 @@ from scipy.spatial import HalfspaceIntersection
 from cdl_parser import CrystalDescription, parse_cdl
 
 from ._accel import prefer_native
-from .models import CrystalGeometry, TwinMetadata
+from .models import CrystalGeometry, LatticeParams, TwinMetadata
 from .symmetry import (
     generate_equivalent_faces,
     get_lattice_for_system,
@@ -298,7 +298,7 @@ def compute_face_vertices(
 
 
 def _build_halfspaces(
-    desc: CrystalDescription, lattice: np.ndarray
+    desc: CrystalDescription, lattice: LatticeParams
 ) -> tuple[list[np.ndarray], list[float], list[int], list[tuple[int, int, int]]]:
     """Build halfspaces from CDL forms.
 

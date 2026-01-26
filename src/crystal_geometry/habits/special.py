@@ -5,6 +5,8 @@ Includes barrel (corundum), tabular, trapezohedron, quartz crystal with
 rhombohedral terminations, and pyritohedron.
 """
 
+from typing import Any
+
 import numpy as np
 from scipy.spatial import ConvexHull
 
@@ -18,7 +20,9 @@ class Barrel(CrystalHabit):
     Hexagonal prism with tapered ends, giving a barrel-like appearance
     """
 
-    def __init__(self, scale: float = 1.0, taper: float = 0.7, c_ratio: float = 1.2, **params):
+    def __init__(
+        self, scale: float = 1.0, taper: float = 0.7, c_ratio: float = 1.2, **params: Any
+    ) -> None:
         """Initialize barrel habit.
 
         Args:
@@ -70,7 +74,7 @@ class Tabular(CrystalHabit):
     Thin rectangular plate with dominant pinacoid faces
     """
 
-    def __init__(self, scale: float = 1.0, thickness: float = 0.3, **params):
+    def __init__(self, scale: float = 1.0, thickness: float = 0.3, **params: Any) -> None:
         """Initialize tabular habit.
 
         Args:
@@ -198,8 +202,12 @@ class QuartzCrystal(CrystalHabit):
     """
 
     def __init__(
-        self, scale: float = 1.0, c_ratio: float = 2.5, termination_angle: float = 38.2, **params
-    ):
+        self,
+        scale: float = 1.0,
+        c_ratio: float = 2.5,
+        termination_angle: float = 38.2,
+        **params: Any,
+    ) -> None:
         """Initialize quartz crystal habit.
 
         Args:
@@ -277,7 +285,7 @@ class Pyritohedron(CrystalHabit):
     12 irregular pentagonal faces, 30 edges, 20 vertices
     """
 
-    def __init__(self, scale: float = 1.0, h: float = 0.618, **params):
+    def __init__(self, scale: float = 1.0, h: float = 0.618, **params: Any) -> None:
         """Initialize pyritohedron.
 
         Args:
@@ -295,10 +303,10 @@ class Pyritohedron(CrystalHabit):
         h = self.h
 
         # The 20 vertices of a pyritohedron from cyclic permutations
-        verts = []
+        verts_list: list[list[float]] = []
 
         # (0, ±1, ±h)
-        verts.extend(
+        verts_list.extend(
             [
                 [0, 1, h],
                 [0, 1, -h],
@@ -308,7 +316,7 @@ class Pyritohedron(CrystalHabit):
         )
 
         # (±h, 0, ±1)
-        verts.extend(
+        verts_list.extend(
             [
                 [h, 0, 1],
                 [h, 0, -1],
@@ -318,7 +326,7 @@ class Pyritohedron(CrystalHabit):
         )
 
         # (±1, ±h, 0)
-        verts.extend(
+        verts_list.extend(
             [
                 [1, h, 0],
                 [1, -h, 0],
@@ -328,7 +336,7 @@ class Pyritohedron(CrystalHabit):
         )
 
         # (0, ±h, ±1)
-        verts.extend(
+        verts_list.extend(
             [
                 [0, h, 1],
                 [0, -h, 1],
@@ -338,7 +346,7 @@ class Pyritohedron(CrystalHabit):
         )
 
         # (±1, 0, ±h)
-        verts.extend(
+        verts_list.extend(
             [
                 [1, 0, h],
                 [1, 0, -h],
@@ -347,7 +355,7 @@ class Pyritohedron(CrystalHabit):
             ]
         )
 
-        verts = np.array(verts, dtype=np.float64)
+        verts = np.array(verts_list, dtype=np.float64)
 
         # Normalize to unit sphere
         max_r = np.max(np.linalg.norm(verts, axis=1))

@@ -4,6 +4,8 @@ Orthorhombic crystal system habits.
 Includes orthorhombic prism with three unequal axes.
 """
 
+from typing import Any
+
 import numpy as np
 
 from .base import CrystalHabit
@@ -16,7 +18,9 @@ class OrthorhombicPrism(CrystalHabit):
     6 rectangular faces with three different dimensions
     """
 
-    def __init__(self, scale: float = 1.0, b_ratio: float = 1.2, c_ratio: float = 1.5, **params):
+    def __init__(
+        self, scale: float = 1.0, b_ratio: float = 1.2, c_ratio: float = 1.5, **params: Any
+    ) -> None:
         """Initialize orthorhombic prism.
 
         Args:

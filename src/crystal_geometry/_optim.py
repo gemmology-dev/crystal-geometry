@@ -310,7 +310,7 @@ def compute_vertices_direct(normals: np.ndarray, distances: np.ndarray) -> np.nd
     normals = np.ascontiguousarray(normals, dtype=np.float64)
     distances = np.ascontiguousarray(distances, dtype=np.float64)
 
-    vertices = []
+    vertices: list[np.ndarray] = []
     n = len(normals)
     tolerance = 1e-6
     tolerance_sq = tolerance * tolerance

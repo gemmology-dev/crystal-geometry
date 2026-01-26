@@ -4,6 +4,8 @@ Tetragonal crystal system habits.
 Includes tetragonal prism and tetragonal bipyramid.
 """
 
+from typing import Any
+
 import numpy as np
 
 from .base import CrystalHabit
@@ -16,7 +18,7 @@ class TetragonalPrism(CrystalHabit):
     4 rectangular prism faces + 2 square end faces
     """
 
-    def __init__(self, scale: float = 1.0, c_ratio: float = 1.8, **params):
+    def __init__(self, scale: float = 1.0, c_ratio: float = 1.8, **params: Any) -> None:
         """Initialize tetragonal prism.
 
         Args:
@@ -67,7 +69,7 @@ class TetragonalBipyramid(CrystalHabit):
     8 isosceles triangular faces meeting at two apices
     """
 
-    def __init__(self, scale: float = 1.0, apex_ratio: float = 1.5, **params):
+    def __init__(self, scale: float = 1.0, apex_ratio: float = 1.5, **params: Any) -> None:
         """Initialize tetragonal bipyramid.
 
         Args:
