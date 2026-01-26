@@ -120,6 +120,7 @@ crystal_geometry = ["py.typed"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+exclude = ["benchmarks/"]
 
 [tool.ruff.lint]
 select = [

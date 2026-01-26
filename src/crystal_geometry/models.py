@@ -24,6 +24,7 @@ class TwinMetadata:
         twin_angle: Rotation angle in degrees
         face_attribution: Optional array mapping faces to components
     """
+
     twin_law: str
     render_mode: str
     n_components: int
@@ -34,12 +35,12 @@ class TwinMetadata:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         return {
-            'twin_law': self.twin_law,
-            'render_mode': self.render_mode,
-            'n_components': self.n_components,
-            'twin_axis': self.twin_axis,
-            'twin_angle': self.twin_angle,
-            'face_attribution': self.face_attribution,
+            "twin_law": self.twin_law,
+            "render_mode": self.render_mode,
+            "n_components": self.n_components,
+            "twin_axis": self.twin_axis,
+            "twin_angle": self.twin_angle,
+            "face_attribution": self.face_attribution,
         }
 
 
@@ -57,6 +58,7 @@ class CrystalGeometry:
         component_ids: Optional array of component IDs for each face (for twins)
         twin_metadata: Optional metadata for twinned crystals
     """
+
     vertices: np.ndarray  # Nx3 array of vertex positions
     faces: list[list[int]]  # List of faces, each face is list of vertex indices
     face_normals: list[np.ndarray]  # Normal vector for each face
@@ -85,7 +87,7 @@ class CrystalGeometry:
         """Get center of geometry (mean of all vertices)."""
         return np.mean(self.vertices, axis=0)
 
-    def scale_to_unit(self) -> 'CrystalGeometry':
+    def scale_to_unit(self) -> "CrystalGeometry":
         """Scale geometry to fit in unit sphere.
 
         Returns:
@@ -103,10 +105,10 @@ class CrystalGeometry:
             face_normals=self.face_normals,
             face_forms=self.face_forms,
             face_millers=self.face_millers,
-            forms=self.forms
+            forms=self.forms,
         )
 
-    def translate(self, offset: np.ndarray) -> 'CrystalGeometry':
+    def translate(self, offset: np.ndarray) -> "CrystalGeometry":
         """Translate geometry by offset.
 
         Args:
@@ -121,10 +123,10 @@ class CrystalGeometry:
             face_normals=self.face_normals,
             face_forms=self.face_forms,
             face_millers=self.face_millers,
-            forms=self.forms
+            forms=self.forms,
         )
 
-    def rotate(self, matrix: np.ndarray) -> 'CrystalGeometry':
+    def rotate(self, matrix: np.ndarray) -> "CrystalGeometry":
         """Rotate geometry by rotation matrix.
 
         Args:
@@ -142,7 +144,7 @@ class CrystalGeometry:
             face_normals=new_normals,
             face_forms=self.face_forms,
             face_millers=self.face_millers,
-            forms=self.forms
+            forms=self.forms,
         )
 
     def euler_characteristic(self) -> int:
@@ -167,16 +169,16 @@ class CrystalGeometry:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
         result = {
-            'vertices': self.vertices.tolist(),
-            'faces': self.faces,
-            'face_normals': [n.tolist() for n in self.face_normals],
-            'face_forms': self.face_forms,
-            'face_millers': self.face_millers,
+            "vertices": self.vertices.tolist(),
+            "faces": self.faces,
+            "face_normals": [n.tolist() for n in self.face_normals],
+            "face_forms": self.face_forms,
+            "face_millers": self.face_millers,
         }
         if self.component_ids is not None:
-            result['component_ids'] = self.component_ids
+            result["component_ids"] = self.component_ids
         if self.twin_metadata is not None:
-            result['twin_metadata'] = self.twin_metadata.to_dict()
+            result["twin_metadata"] = self.twin_metadata.to_dict()
         return result
 
 
@@ -188,6 +190,7 @@ class LatticeParams:
         a, b, c: Lattice vector lengths
         alpha, beta, gamma: Angles between lattice vectors (in radians)
     """
+
     a: float = 1.0
     b: float = 1.0
     c: float = 1.0
@@ -196,19 +199,19 @@ class LatticeParams:
     gamma: float = np.pi / 2
 
     @classmethod
-    def cubic(cls) -> 'LatticeParams':
+    def cubic(cls) -> "LatticeParams":
         """Create cubic lattice (a = b = c, all angles 90°)."""
-        return cls(1.0, 1.0, 1.0, np.pi/2, np.pi/2, np.pi/2)
+        return cls(1.0, 1.0, 1.0, np.pi / 2, np.pi / 2, np.pi / 2)
 
     @classmethod
-    def hexagonal(cls, c_ratio: float = 1.633) -> 'LatticeParams':
+    def hexagonal(cls, c_ratio: float = 1.633) -> "LatticeParams":
         """Create hexagonal lattice (a = b, gamma = 120°)."""
-        return cls(1.0, 1.0, c_ratio, np.pi/2, np.pi/2, 2*np.pi/3)
+        return cls(1.0, 1.0, c_ratio, np.pi / 2, np.pi / 2, 2 * np.pi / 3)
 
     @classmethod
-    def tetragonal(cls, c_ratio: float = 1.0) -> 'LatticeParams':
+    def tetragonal(cls, c_ratio: float = 1.0) -> "LatticeParams":
         """Create tetragonal lattice (a = b, all angles 90°)."""
-        return cls(1.0, 1.0, c_ratio, np.pi/2, np.pi/2, np.pi/2)
+        return cls(1.0, 1.0, c_ratio, np.pi / 2, np.pi / 2, np.pi / 2)
 
 
 # Default lattice for cubic system

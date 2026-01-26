@@ -5,7 +5,6 @@ Implements the 32 crystallographic point groups and their symmetry operations.
 Used to generate symmetry-equivalent faces from a single Miller index.
 """
 
-
 from functools import lru_cache
 
 import numpy as np
@@ -27,33 +26,21 @@ def Rz(n: int) -> np.ndarray:
     """n-fold rotation about z axis."""
     angle = 2 * np.pi / n
     c, s = np.cos(angle), np.sin(angle)
-    return np.array([
-        [c, -s, 0],
-        [s, c, 0],
-        [0, 0, 1]
-    ])
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
 
 
 def Rx(n: int) -> np.ndarray:
     """n-fold rotation about x axis."""
     angle = 2 * np.pi / n
     c, s = np.cos(angle), np.sin(angle)
-    return np.array([
-        [1, 0, 0],
-        [0, c, -s],
-        [0, s, c]
-    ])
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
 
 def Ry(n: int) -> np.ndarray:
     """n-fold rotation about y axis."""
     angle = 2 * np.pi / n
     c, s = np.cos(angle), np.sin(angle)
-    return np.array([
-        [c, 0, s],
-        [0, 1, 0],
-        [-s, 0, c]
-    ])
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
 
 
 # Common rotations
@@ -65,48 +52,29 @@ C4z = Rz(4)  # 90 degree rotation about z
 C6z = Rz(6)  # 60 degree rotation about z
 
 # Mirrors
-Mxy = np.diag([1, 1, -1])   # Mirror perpendicular to z
-Mxz = np.diag([1, -1, 1])   # Mirror perpendicular to y
-Myz = np.diag([-1, 1, 1])   # Mirror perpendicular to x
+Mxy = np.diag([1, 1, -1])  # Mirror perpendicular to z
+Mxz = np.diag([1, -1, 1])  # Mirror perpendicular to y
+Myz = np.diag([-1, 1, 1])  # Mirror perpendicular to x
 
 # Diagonal mirrors (for cubic system)
-M110 = np.array([
-    [0, 1, 0],
-    [1, 0, 0],
-    [0, 0, 1]
-])  # Mirror across (110) plane
+M110 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])  # Mirror across (110) plane
 
-M1_10 = np.array([
-    [0, -1, 0],
-    [-1, 0, 0],
-    [0, 0, 1]
-])  # Mirror across (1-10) plane
+M1_10 = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, 1]])  # Mirror across (1-10) plane
 
 # 3-fold rotation about [111]
-C3_111 = np.array([
-    [0, 0, 1],
-    [1, 0, 0],
-    [0, 1, 0]
-])
+C3_111 = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
 
 # 4-fold rotation about [100] (x-axis)
-C4x = np.array([
-    [1, 0, 0],
-    [0, 0, -1],
-    [0, 1, 0]
-])
+C4x = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
 # 2-fold rotation about [110]
-C2_110 = np.array([
-    [0, 1, 0],
-    [1, 0, 0],
-    [0, 0, -1]
-])
+C2_110 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, -1]])
 
 
 # =============================================================================
 # Point Group Operations
 # =============================================================================
+
 
 def _generate_group(generators: list[np.ndarray], max_elements: int = 200) -> list[np.ndarray]:
     """Generate point group from generator matrices.
@@ -160,50 +128,44 @@ def get_point_group_operations(point_group: str) -> list[np.ndarray]:
     # Define generators for each point group
     generators_map = {
         # Cubic
-        'm3m': [C4z, C3_111, I],
-        '432': [C4z, C3_111],
-        '-43m': [C4z @ I, C3_111],  # S4
-        'm-3': [C2z, C3_111, I],
-        '23': [C2z, C3_111],
-
+        "m3m": [C4z, C3_111, I],
+        "432": [C4z, C3_111],
+        "-43m": [C4z @ I, C3_111],  # S4
+        "m-3": [C2z, C3_111, I],
+        "23": [C2z, C3_111],
         # Hexagonal
-        '6/mmm': [C6z, C2x, Mxy],
-        '622': [C6z, C2x],
-        '6mm': [C6z, Mxz],
-        '-6m2': [C3z, Mxy, Mxz],
-        '6/m': [C6z, Mxy],
-        '-6': [C3z, Mxy],
-        '6': [C6z],
-
+        "6/mmm": [C6z, C2x, Mxy],
+        "622": [C6z, C2x],
+        "6mm": [C6z, Mxz],
+        "-6m2": [C3z, Mxy, Mxz],
+        "6/m": [C6z, Mxy],
+        "-6": [C3z, Mxy],
+        "6": [C6z],
         # Trigonal
-        '-3m': [C3z, C2x, I],
-        '32': [C3z, C2x],
-        '3m': [C3z, Mxz],
-        '-3': [C3z, I],
-        '3': [C3z],
-
+        "-3m": [C3z, C2x, I],
+        "32": [C3z, C2x],
+        "3m": [C3z, Mxz],
+        "-3": [C3z, I],
+        "3": [C3z],
         # Tetragonal
-        '4/mmm': [C4z, C2x, Mxy],
-        '422': [C4z, C2x],
-        '4mm': [C4z, Mxz],
-        '-42m': [C4z @ I, C2x],  # S4
-        '4/m': [C4z, Mxy],
-        '-4': [C4z @ I],  # S4
-        '4': [C4z],
-
+        "4/mmm": [C4z, C2x, Mxy],
+        "422": [C4z, C2x],
+        "4mm": [C4z, Mxz],
+        "-42m": [C4z @ I, C2x],  # S4
+        "4/m": [C4z, Mxy],
+        "-4": [C4z @ I],  # S4
+        "4": [C4z],
         # Orthorhombic
-        'mmm': [C2z, C2x, I],
-        '222': [C2z, C2x],
-        'mm2': [C2z, Mxz],
-
+        "mmm": [C2z, C2x, I],
+        "222": [C2z, C2x],
+        "mm2": [C2z, Mxz],
         # Monoclinic
-        '2/m': [C2y, Mxz],
-        '2': [C2y],
-        'm': [Mxz],
-
+        "2/m": [C2y, Mxz],
+        "2": [C2y],
+        "m": [Mxz],
         # Triclinic
-        '-1': [I],
-        '1': [],
+        "-1": [I],
+        "1": [],
     }
 
     if point_group not in generators_map:
@@ -221,8 +183,7 @@ def get_point_group_operations(point_group: str) -> list[np.ndarray]:
 
 @lru_cache(maxsize=64)
 def _get_reciprocal_lattice(
-    a: float, b: float, c: float,
-    alpha: float, beta: float, gamma: float
+    a: float, b: float, c: float, alpha: float, beta: float, gamma: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute reciprocal lattice vectors (cached for performance).
 
@@ -253,7 +214,9 @@ def _get_reciprocal_lattice(
     return a_star, b_star, c_star
 
 
-def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LATTICE) -> np.ndarray:
+def miller_to_normal(
+    h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LATTICE
+) -> np.ndarray:
     """Convert Miller index to face normal vector.
 
     For non-cubic systems, uses the reciprocal lattice (cached for performance).
@@ -267,15 +230,16 @@ def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LA
     """
     # For cubic systems, Miller indices directly give the normal
     # For other systems, we need the reciprocal lattice
-    if lattice.a == lattice.b == lattice.c and \
-       lattice.alpha == lattice.beta == lattice.gamma == np.pi/2:
+    if (
+        lattice.a == lattice.b == lattice.c
+        and lattice.alpha == lattice.beta == lattice.gamma == np.pi / 2
+    ):
         # Cubic
         normal = np.array([h, k, l], dtype=float)
     else:
         # Non-cubic: use cached reciprocal lattice vectors
         a_star, b_star, c_star = _get_reciprocal_lattice(
-            lattice.a, lattice.b, lattice.c,
-            lattice.alpha, lattice.beta, lattice.gamma
+            lattice.a, lattice.b, lattice.c, lattice.alpha, lattice.beta, lattice.gamma
         )
 
         # Normal in Cartesian coordinates
@@ -288,8 +252,9 @@ def miller_to_normal(h: int, k: int, l: int, lattice: LatticeParams = DEFAULT_LA
     return np.array([0, 0, 1])
 
 
-def generate_equivalent_faces(h: int, k: int, l: int, point_group: str,
-                              lattice: LatticeParams = DEFAULT_LATTICE) -> list[tuple[int, int, int]]:
+def generate_equivalent_faces(
+    h: int, k: int, l: int, point_group: str, lattice: LatticeParams = DEFAULT_LATTICE
+) -> list[tuple[int, int, int]]:
     """Generate all symmetry-equivalent Miller indices.
 
     Args:
@@ -329,11 +294,11 @@ def get_lattice_for_system(system: str, c_ratio: float = 1.0) -> LatticeParams:
     Returns:
         LatticeParams for the system
     """
-    if system == 'cubic':
+    if system == "cubic":
         return LatticeParams.cubic()
-    elif system == 'hexagonal' or system == 'trigonal':
+    elif system == "hexagonal" or system == "trigonal":
         return LatticeParams.hexagonal(c_ratio)
-    elif system == 'tetragonal':
+    elif system == "tetragonal":
         return LatticeParams.tetragonal(c_ratio)
     else:
         # Orthorhombic, monoclinic, triclinic - use defaults

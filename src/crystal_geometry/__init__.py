@@ -22,6 +22,14 @@ __version__ = "1.0.0"
 __author__ = "Fabian Schuh"
 __email__ = "fabian@gemmology.dev"
 
+# Acceleration / Backend info
+from ._accel import (
+    get_backend,
+    get_backend_info,
+    get_num_threads,
+    set_num_threads,
+)
+
 # Core geometry generation
 from .geometry import (
     cdl_string_to_geometry,
@@ -34,8 +42,41 @@ from .geometry import (
     halfspace_intersection_3d,
 )
 
+# Habit system
+from .habits import (
+    GEMSTONE_HABITS,
+    HABIT_REGISTRY,
+    Barrel,
+    CrystalHabit,
+    Cube,
+    Dodecahedron,
+    HexagonalBipyramid,
+    HexagonalPrism,
+    Octahedron,
+    OrthorhombicPrism,
+    Pyritohedron,
+    QuartzCrystal,
+    Tabular,
+    TetragonalBipyramid,
+    TetragonalPrism,
+    Trapezohedron,
+    get_gemstone_habits,
+    get_habit,
+    list_habits,
+)
+
 # Data classes
 from .models import DEFAULT_LATTICE, CrystalGeometry, LatticeParams, TwinMetadata
+
+# Modifications
+from .modifications import (
+    AXIS_MAP,
+    apply_elongation,
+    apply_flatten,
+    apply_modifications,
+    apply_taper,
+    apply_twist,
+)
 
 # Symmetry operations
 from .symmetry import (
@@ -62,47 +103,6 @@ from .twins import (
     list_twin_laws,
     reflection_matrix,
     rotation_matrix_axis_angle,
-)
-
-# Habit system
-from .habits import (
-    GEMSTONE_HABITS,
-    HABIT_REGISTRY,
-    Barrel,
-    Cube,
-    CrystalHabit,
-    Dodecahedron,
-    HexagonalBipyramid,
-    HexagonalPrism,
-    Octahedron,
-    OrthorhombicPrism,
-    Pyritohedron,
-    QuartzCrystal,
-    Tabular,
-    TetragonalBipyramid,
-    TetragonalPrism,
-    Trapezohedron,
-    get_gemstone_habits,
-    get_habit,
-    list_habits,
-)
-
-# Modifications
-from .modifications import (
-    AXIS_MAP,
-    apply_elongation,
-    apply_flatten,
-    apply_modifications,
-    apply_taper,
-    apply_twist,
-)
-
-# Acceleration / Backend info
-from ._accel import (
-    get_backend,
-    get_backend_info,
-    get_num_threads,
-    set_num_threads,
 )
 
 __all__ = [

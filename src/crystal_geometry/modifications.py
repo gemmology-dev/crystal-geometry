@@ -9,22 +9,18 @@ from typing import Any
 
 import numpy as np
 
-
 # Axis name to vector mapping
 AXIS_MAP: dict[str, np.ndarray] = {
-    'a': np.array([1.0, 0.0, 0.0]),
-    'b': np.array([0.0, 1.0, 0.0]),
-    'c': np.array([0.0, 0.0, 1.0]),
-    'x': np.array([1.0, 0.0, 0.0]),
-    'y': np.array([0.0, 1.0, 0.0]),
-    'z': np.array([0.0, 0.0, 1.0]),
+    "a": np.array([1.0, 0.0, 0.0]),
+    "b": np.array([0.0, 1.0, 0.0]),
+    "c": np.array([0.0, 0.0, 1.0]),
+    "x": np.array([1.0, 0.0, 0.0]),
+    "y": np.array([0.0, 1.0, 0.0]),
+    "z": np.array([0.0, 0.0, 1.0]),
 }
 
 
-def apply_modifications(
-    vertices: np.ndarray,
-    modifications: list[Any]
-) -> np.ndarray:
+def apply_modifications(vertices: np.ndarray, modifications: list[Any]) -> np.ndarray:
     """Apply all modifications to vertex array.
 
     Processes modifications in order, applying each to the result
@@ -42,18 +38,18 @@ def apply_modifications(
 
     for mod in modifications:
         # Get modification name (support both 'name' and 'type' attributes)
-        mod_name = getattr(mod, 'name', None) or getattr(mod, 'type', None)
+        mod_name = getattr(mod, "name", None) or getattr(mod, "type", None)
 
         # Get parameters (support both 'params' and 'parameters' attributes)
-        params = getattr(mod, 'params', None) or getattr(mod, 'parameters', {}) or {}
+        params = getattr(mod, "params", None) or getattr(mod, "parameters", {}) or {}
 
-        if mod_name == 'elongate':
+        if mod_name == "elongate":
             result = apply_elongation(result, params)
-        elif mod_name == 'taper':
+        elif mod_name == "taper":
             result = apply_taper(result, params)
-        elif mod_name == 'flatten':
+        elif mod_name == "flatten":
             result = apply_flatten(result, params)
-        elif mod_name == 'twist':
+        elif mod_name == "twist":
             result = apply_twist(result, params)
         # Truncation is handled via form combination, not post-processing
         # Bevel requires adding new faces, not just vertex modification
@@ -61,10 +57,7 @@ def apply_modifications(
     return result
 
 
-def apply_elongation(
-    vertices: np.ndarray,
-    params: dict[str, Any]
-) -> np.ndarray:
+def apply_elongation(vertices: np.ndarray, params: dict[str, Any]) -> np.ndarray:
     """Apply elongation (scaling) along a specified axis.
 
     Elongation stretches or compresses the crystal along one axis.
@@ -79,8 +72,8 @@ def apply_elongation(
         Nx3 array of modified vertices
     """
     # Parse parameters
-    axis_name = params.get('axis', 'c').lower()
-    ratio = params.get('ratio', params.get(axis_name, 1.0))
+    axis_name = params.get("axis", "c").lower()
+    ratio = params.get("ratio", params.get(axis_name, 1.0))
 
     if axis_name not in AXIS_MAP:
         raise ValueError(f"Unknown axis: '{axis_name}'. Use a, b, c, x, y, or z.")
@@ -96,10 +89,7 @@ def apply_elongation(
     return result
 
 
-def apply_taper(
-    vertices: np.ndarray,
-    params: dict[str, Any]
-) -> np.ndarray:
+def apply_taper(vertices: np.ndarray, params: dict[str, Any]) -> np.ndarray:
     """Apply tapering toward a specified direction.
 
     Tapering scales vertices perpendicular to an axis based on their
@@ -114,11 +104,11 @@ def apply_taper(
     Returns:
         Nx3 array of modified vertices
     """
-    direction = params.get('direction', '+c')
-    factor = params.get('factor', 0.8)
+    direction = params.get("direction", "+c")
+    factor = params.get("factor", 0.8)
 
     # Parse direction string
-    positive = not direction.startswith('-')
+    positive = not direction.startswith("-")
     axis_name = direction[-1].lower()
 
     if axis_name not in AXIS_MAP:
@@ -156,10 +146,7 @@ def apply_taper(
     return result
 
 
-def apply_flatten(
-    vertices: np.ndarray,
-    params: dict[str, Any]
-) -> np.ndarray:
+def apply_flatten(vertices: np.ndarray, params: dict[str, Any]) -> np.ndarray:
     """Apply flattening perpendicular to a specified axis.
 
     Flattening compresses the crystal perpendicular to an axis,
@@ -174,8 +161,8 @@ def apply_flatten(
     Returns:
         Nx3 array of modified vertices
     """
-    axis_name = params.get('axis', 'c').lower()
-    ratio = params.get('ratio', 0.5)
+    axis_name = params.get("axis", "c").lower()
+    ratio = params.get("ratio", 0.5)
 
     if axis_name not in AXIS_MAP:
         raise ValueError(f"Unknown axis: '{axis_name}'")
@@ -194,10 +181,7 @@ def apply_flatten(
     return result
 
 
-def apply_twist(
-    vertices: np.ndarray,
-    params: dict[str, Any]
-) -> np.ndarray:
+def apply_twist(vertices: np.ndarray, params: dict[str, Any]) -> np.ndarray:
     """Apply twist deformation around a specified axis.
 
     Twist rotates vertices around an axis with the angle proportional
@@ -213,8 +197,8 @@ def apply_twist(
     Returns:
         Nx3 array of modified vertices
     """
-    axis_name = params.get('axis', 'c').lower()
-    total_angle = params.get('angle', 30.0)
+    axis_name = params.get("axis", "c").lower()
+    total_angle = params.get("angle", 30.0)
 
     if axis_name not in AXIS_MAP:
         raise ValueError(f"Unknown axis: '{axis_name}'")

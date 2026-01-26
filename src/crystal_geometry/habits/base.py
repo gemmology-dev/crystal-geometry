@@ -146,7 +146,7 @@ class CrystalHabit(ABC):
         return np.array(normals), np.array(distances)
 
     def __repr__(self) -> str:
-        params_str = ', '.join(f'{k}={v}' for k, v in self.params.items())
+        params_str = ", ".join(f"{k}={v}" for k, v in self.params.items())
         if params_str:
             return f"{self.__class__.__name__}(scale={self.scale}, {params_str})"
         return f"{self.__class__.__name__}(scale={self.scale})"

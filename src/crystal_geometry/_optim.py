@@ -37,10 +37,7 @@ def _spatial_hash_key(vertex: np.ndarray, cell_size: float) -> tuple[int, int, i
 
 
 @prefer_native
-def find_interior_point(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray | None:
+def find_interior_point(normals: np.ndarray, distances: np.ndarray) -> np.ndarray | None:
     """Find interior point using linear programming (Chebyshev center).
 
     Finds the center of the largest ball that fits inside the polyhedron
@@ -73,7 +70,7 @@ def find_interior_point(
     bounds = [(-10.0, 10.0), (-10.0, 10.0), (-10.0, 10.0), (1e-10, None)]
 
     try:
-        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
+        result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")
 
         if result.success and result.x[3] > 1e-10:
             return result.x[:3]
@@ -83,10 +80,7 @@ def find_interior_point(
     return None
 
 
-def find_interior_point_iterative(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray | None:
+def find_interior_point_iterative(normals: np.ndarray, distances: np.ndarray) -> np.ndarray | None:
     """Find interior point by iterative shrinking.
 
     Fallback method when linear programming fails.
@@ -145,10 +139,7 @@ def find_interior_point_iterative(
 
 
 @prefer_native
-def deduplicate_vertices(
-    vertices: np.ndarray,
-    tolerance: float = 1e-8
-) -> np.ndarray:
+def deduplicate_vertices(vertices: np.ndarray, tolerance: float = 1e-8) -> np.ndarray:
     """Remove duplicate vertices using spatial hashing for O(n) performance.
 
     Uses a hash grid to achieve approximately O(n) complexity by only
@@ -200,10 +191,7 @@ def deduplicate_vertices(
 
 @prefer_native
 def compute_face_vertices(
-    vertices: np.ndarray,
-    normal: np.ndarray,
-    distance: float,
-    tolerance: float = 1e-6
+    vertices: np.ndarray, normal: np.ndarray, distance: float, tolerance: float = 1e-6
 ) -> list[int]:
     """Find vertices that lie on a face plane.
 
@@ -259,9 +247,7 @@ def compute_face_vertices(
 
 @prefer_native
 def halfspace_intersection(
-    normals: np.ndarray,
-    distances: np.ndarray,
-    interior_point: np.ndarray | None = None
+    normals: np.ndarray, distances: np.ndarray, interior_point: np.ndarray | None = None
 ) -> np.ndarray | None:
     """Compute intersection of half-spaces in 3D.
 
@@ -308,10 +294,7 @@ def halfspace_intersection(
             return None
 
 
-def compute_vertices_direct(
-    normals: np.ndarray,
-    distances: np.ndarray
-) -> np.ndarray:
+def compute_vertices_direct(normals: np.ndarray, distances: np.ndarray) -> np.ndarray:
     """Compute vertices by finding triple-plane intersections.
 
     Fallback method when scipy fails.
@@ -368,10 +351,7 @@ def compute_vertices_direct(
 
 
 def compute_all_face_vertices(
-    vertices: np.ndarray,
-    normals: np.ndarray,
-    distances: np.ndarray,
-    tolerance: float = 1e-5
+    vertices: np.ndarray, normals: np.ndarray, distances: np.ndarray, tolerance: float = 1e-5
 ) -> list[list[int]]:
     """Compute face vertex indices for all halfspaces.
 

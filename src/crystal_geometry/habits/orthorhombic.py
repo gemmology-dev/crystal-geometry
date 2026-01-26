@@ -16,13 +16,7 @@ class OrthorhombicPrism(CrystalHabit):
     6 rectangular faces with three different dimensions
     """
 
-    def __init__(
-        self,
-        scale: float = 1.0,
-        b_ratio: float = 1.2,
-        c_ratio: float = 1.5,
-        **params
-    ):
+    def __init__(self, scale: float = 1.0, b_ratio: float = 1.2, c_ratio: float = 1.5, **params):
         """Initialize orthorhombic prism.
 
         Args:
@@ -42,10 +36,22 @@ class OrthorhombicPrism(CrystalHabit):
         a = 1.0
         b = self.b_ratio
         c = self.c_ratio
-        return np.array([
-            [-a, -b, -c], [a, -b, -c], [a, b, -c], [-a, b, -c],
-            [-a, -b, c], [a, -b, c], [a, b, c], [-a, b, c]
-        ], dtype=np.float64) / 2.0
+        return (
+            np.array(
+                [
+                    [-a, -b, -c],
+                    [a, -b, -c],
+                    [a, b, -c],
+                    [-a, b, -c],
+                    [-a, -b, c],
+                    [a, -b, c],
+                    [a, b, c],
+                    [-a, b, c],
+                ],
+                dtype=np.float64,
+            )
+            / 2.0
+        )
 
     def _compute_faces(self) -> list[list[int]]:
         return [
@@ -54,5 +60,5 @@ class OrthorhombicPrism(CrystalHabit):
             [0, 1, 5, 4],  # Front (y = -b/2)
             [2, 3, 7, 6],  # Back (y = +b/2)
             [0, 4, 7, 3],  # Left (x = -a/2)
-            [1, 2, 6, 5]   # Right (x = +a/2)
+            [1, 2, 6, 5],  # Right (x = +a/2)
         ]

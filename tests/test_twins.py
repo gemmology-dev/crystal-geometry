@@ -5,8 +5,6 @@ import pytest
 
 from crystal_geometry.twins import (
     DIRECTIONS,
-    GEMSTONE_TWINS,
-    GEOMETRY_GENERATORS,
     TWIN_LAWS,
     CrystalComponent,
     TwinGeometry,
@@ -82,9 +80,9 @@ class TestDirections:
 
     def test_basic_directions(self):
         """Check standard axis directions."""
-        assert np.allclose(DIRECTIONS['[100]'], [1, 0, 0])
-        assert np.allclose(DIRECTIONS['[010]'], [0, 1, 0])
-        assert np.allclose(DIRECTIONS['[001]'], [0, 0, 1])
+        assert np.allclose(DIRECTIONS["[100]"], [1, 0, 0])
+        assert np.allclose(DIRECTIONS["[010]"], [0, 1, 0])
+        assert np.allclose(DIRECTIONS["[001]"], [0, 0, 1])
 
 
 class TestTwinLaws:
@@ -96,31 +94,37 @@ class TestTwinLaws:
 
     def test_get_twin_law_valid(self):
         """Should get valid twin laws."""
-        law = get_twin_law('spinel_law')
+        law = get_twin_law("spinel_law")
         assert isinstance(law, TwinLaw)
-        assert law.name == 'Spinel Law (Macle)'
+        assert law.name == "Spinel Law (Macle)"
         assert law.angle == 180.0
 
     def test_get_twin_law_invalid(self):
         """Should raise for unknown twin law."""
         with pytest.raises(ValueError, match="Unknown twin law"):
-            get_twin_law('nonexistent')
+            get_twin_law("nonexistent")
 
     def test_list_twin_laws(self):
         """Should list all twin laws."""
         laws = list_twin_laws()
         assert len(laws) == 14
-        assert 'spinel_law' in laws
-        assert 'japan' in laws
+        assert "spinel_law" in laws
+        assert "japan" in laws
 
-    @pytest.mark.parametrize('law_name', list(TWIN_LAWS.keys()))
+    @pytest.mark.parametrize("law_name", list(TWIN_LAWS.keys()))
     def test_all_twin_laws_have_required_fields(self, law_name):
         """Each twin law should have all required fields."""
         law = get_twin_law(law_name)
         assert law.name
         assert law.description
-        assert law.twin_type in ('contact', 'penetration', 'cyclic')
-        assert law.render_mode in ('unified', 'dual_crystal', 'v_shaped', 'cyclic', 'single_crystal')
+        assert law.twin_type in ("contact", "penetration", "cyclic")
+        assert law.render_mode in (
+            "unified",
+            "dual_crystal",
+            "v_shaped",
+            "cyclic",
+            "single_crystal",
+        )
         assert len(law.axis) == 3
         assert law.angle > 0
         assert law.habit
@@ -131,21 +135,21 @@ class TestGemstoneTwins:
 
     def test_get_gemstone_twins(self):
         """Should get twins for known gemstones."""
-        twins = get_gemstone_twins('diamond')
-        assert twins == ['spinel_law']
+        twins = get_gemstone_twins("diamond")
+        assert twins == ["spinel_law"]
 
-        twins = get_gemstone_twins('quartz')
-        assert 'japan' in twins
-        assert 'brazil' in twins
+        twins = get_gemstone_twins("quartz")
+        assert "japan" in twins
+        assert "brazil" in twins
 
     def test_get_gemstone_twins_unknown(self):
         """Should return empty list for unknown gemstones."""
-        twins = get_gemstone_twins('unknown_gem')
+        twins = get_gemstone_twins("unknown_gem")
         assert twins == []
 
     def test_get_gemstone_twins_case_insensitive(self):
         """Should be case-insensitive."""
-        assert get_gemstone_twins('Diamond') == get_gemstone_twins('diamond')
+        assert get_gemstone_twins("Diamond") == get_gemstone_twins("diamond")
 
 
 class TestGenerators:
@@ -154,22 +158,22 @@ class TestGenerators:
     def test_list_generators(self):
         """Should list all generator types."""
         generators = list_generators()
-        assert 'unified' in generators
-        assert 'dual_crystal' in generators
-        assert 'v_shaped' in generators
-        assert 'cyclic' in generators
-        assert 'single_crystal' in generators
+        assert "unified" in generators
+        assert "dual_crystal" in generators
+        assert "v_shaped" in generators
+        assert "cyclic" in generators
+        assert "single_crystal" in generators
 
     def test_get_generator_valid(self):
         """Should get valid generators."""
-        gen = get_generator('unified')
+        gen = get_generator("unified")
         assert gen is not None
-        assert hasattr(gen, 'generate')
+        assert hasattr(gen, "generate")
 
     def test_get_generator_invalid(self):
         """Should raise for unknown generator."""
         with pytest.raises(ValueError, match="Unknown render mode"):
-            get_generator('nonexistent')
+            get_generator("nonexistent")
 
 
 class TestCrystalComponent:
@@ -210,10 +214,10 @@ class TestTwinGeometry:
         faces = [[0, 1, 2]]
         comp = CrystalComponent(vertices, faces, component_id=0)
 
-        geom = TwinGeometry([comp], render_mode='unified')
+        geom = TwinGeometry([comp], render_mode="unified")
 
         assert geom.n_components == 1
-        assert geom.render_mode == 'unified'
+        assert geom.render_mode == "unified"
 
     def test_geometry_all_vertices(self):
         """Should concatenate vertices from all components."""
@@ -223,7 +227,7 @@ class TestTwinGeometry:
         comp1 = CrystalComponent(v1, [[0, 1]], component_id=0)
         comp2 = CrystalComponent(v2, [[0, 1]], component_id=1)
 
-        geom = TwinGeometry([comp1, comp2], render_mode='separate')
+        geom = TwinGeometry([comp1, comp2], render_mode="separate")
 
         all_verts = geom.get_all_vertices()
         assert len(all_verts) == 4
@@ -236,7 +240,7 @@ class TestTwinGeometry:
         comp1 = CrystalComponent(v1, [[0, 1, 2]], component_id=0)
         comp2 = CrystalComponent(v2, [[0, 1, 2]], component_id=1)
 
-        geom = TwinGeometry([comp1, comp2], render_mode='separate')
+        geom = TwinGeometry([comp1, comp2], render_mode="separate")
 
         attribution = geom.get_face_attribution()
         assert list(attribution) == [0, 1]
