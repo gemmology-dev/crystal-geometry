@@ -43,7 +43,13 @@ jobs:
 
       - name: Install Eigen (macOS)
         if: matrix.os == 'macos-latest'
-        run: brew install eigen
+        run: |
+          brew install eigen
+          echo "=== Eigen installation ==="
+          brew --prefix eigen
+          ls -la $(brew --prefix eigen)/
+          echo "=== Looking for cmake files ==="
+          find $(brew --prefix eigen) -name "*.cmake" -o -name "Eigen3*" 2>/dev/null || true
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
