@@ -631,6 +631,64 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
             )
 
 
+class ContactRotationGeometryGenerator(TwinGeometryGenerator):
+    """Contact twin with rotation across composition plane.
+
+    For contact twins where one half is rotated (not reflected):
+    1. Clip the crystal at the composition plane (twin axis normal)
+    2. Rotate one half by the twin angle about the twin axis
+    3. Return both halves as separate components
+
+    Used for:
+    - Spinel law (diamond, spinel, magnetite): 180° about [111]
+    - Albite law (plagioclase): 180° about [010]
+    - Manebach law (orthoclase): 180° about [001]
+    - Baveno law (orthoclase): 180° about [021]
+    """
+
+    def generate(
+        self, twin_info: dict[str, Any], normals: np.ndarray, distances: np.ndarray
+    ) -> TwinGeometry:
+        twin_axis = np.asarray(twin_info["axis"])
+        twin_axis = twin_axis / np.linalg.norm(twin_axis)
+        twin_angle = twin_info["angle"]
+
+        # Crystal 1: Clip at composition plane (keep positive side: twin_axis · x >= 0)
+        # Adding -twin_axis as normal with distance 0 clips at origin
+        clipped_normals1 = np.vstack([normals, -twin_axis.reshape(1, 3)])
+        clipped_distances1 = np.append(distances, 0.0)
+
+        verts1 = _compute_halfspace_intersection(clipped_normals1, clipped_distances1)
+        if len(verts1) < 4:
+            raise ValueError("Failed to compute macle crystal 1 geometry")
+        faces1 = _compute_face_vertices(verts1, clipped_normals1, clipped_distances1)
+
+        component1 = CrystalComponent(
+            vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
+        )
+
+        # Crystal 2: Rotate Crystal 1 by twin_angle about twin_axis
+        R = rotation_matrix_axis_angle(twin_axis, twin_angle)
+        verts2 = (R @ verts1.T).T
+        # Same topology, same face winding (rotation preserves orientation)
+        faces2 = [list(face) for face in faces1]
+
+        component2 = CrystalComponent(
+            vertices=verts2, faces=faces2, transform=np.eye(4), component_id=1
+        )
+
+        return TwinGeometry(
+            components=[component1, component2],
+            render_mode="separate",
+            metadata={
+                "blend_mode": "adjacent",
+                "composition_plane": {"normal": twin_axis.tolist(), "offset": 0.0},
+                "twin_axis": twin_axis,
+                "twin_angle": twin_angle,
+            },
+        )
+
+
 class SingleCrystalGeometryGenerator(TwinGeometryGenerator):
     """Single crystal generator - returns base habit without twin modifications.
 
@@ -676,6 +734,7 @@ GEOMETRY_GENERATORS: dict[str, TwinGeometryGenerator] = {
     "unified": UnifiedGeometryGenerator(),
     "dual_crystal": DualCrystalGeometryGenerator(),
     "v_shaped": VShapedGeometryGenerator(),
+    "contact_rotation": ContactRotationGeometryGenerator(),
     "cyclic": CyclicGeometryGenerator(use_unified=True),
     "cyclic_separate": CyclicGeometryGenerator(use_unified=False),
     "single_crystal": SingleCrystalGeometryGenerator(),

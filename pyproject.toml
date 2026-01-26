@@ -1,6 +1,6 @@
 [project]
 name = "gemmology-crystal-geometry"
-version = "1.0.2"
+version = "1.0.3"
 description = "3D crystal geometry engine for crystallographic visualization"
 readme = "README.md"
 license = { text = "MIT" }

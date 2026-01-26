@@ -117,6 +117,90 @@ class Tabular(CrystalHabit):
         ]
 
 
+class FeldsparTabular(CrystalHabit):
+    """Monoclinic feldspar habit with asymmetric prism faces.
+
+    Common for: orthoclase, plagioclase (albite), microcline
+
+    This habit has asymmetric {110} and {-110} face development, which makes
+    twin boundaries visible when the crystal is twinned. The standard symmetric
+    tabular habit produces invisible twins for 180° rotation twins like Albite
+    and Manebach because both halves end up in identical orientations.
+
+    The geometry approximates monoclinic 2/m symmetry with:
+    - {001} pinacoid (thin, dominant)
+    - {010} side pinacoid
+    - {110} prism face (smaller)
+    - {-110} prism face (larger, asymmetric)
+    """
+
+    def __init__(
+        self,
+        scale: float = 1.0,
+        thickness: float = 0.3,
+        asymmetry: float = 0.3,
+        **params: Any,
+    ) -> None:
+        """Initialize feldspar tabular habit.
+
+        Args:
+            scale: Overall size multiplier
+            thickness: Relative thickness of the plate (z-dimension)
+            asymmetry: Difference between {110} and {-110} face development.
+                       Higher values make twins more visible. Default 0.3.
+        """
+        super().__init__(scale, thickness=thickness, asymmetry=asymmetry, **params)
+        self.thickness = thickness
+        self.asymmetry = asymmetry
+
+    @property
+    def name(self) -> str:
+        return "Feldspar Tabular"
+
+    def _compute_vertices(self) -> np.ndarray:
+        h = self.thickness
+        asym = self.asymmetry
+
+        # Base dimensions for the tabular shape
+        # The asymmetry creates different angles for {110} vs {-110}
+        # This breaks the mirror symmetry that makes twins invisible
+
+        # Front face vertices (y < 0)
+        x_front = 1.0
+        y_front = -0.8
+
+        # Back face vertices (y > 0) - asymmetric
+        x_back_left = -1.0 - asym  # {-110} extends further
+        x_back_right = 1.0
+        y_back = 0.8
+
+        return np.array(
+            [
+                # Bottom face (z = -h)
+                [-1.0, y_front, -h],           # 0: front-left
+                [x_front, y_front, -h],        # 1: front-right
+                [x_back_right, y_back, -h],    # 2: back-right
+                [x_back_left, y_back, -h],     # 3: back-left (asymmetric)
+                # Top face (z = +h)
+                [-1.0, y_front, h],            # 4: front-left
+                [x_front, y_front, h],         # 5: front-right
+                [x_back_right, y_back, h],     # 6: back-right
+                [x_back_left, y_back, h],      # 7: back-left (asymmetric)
+            ],
+            dtype=np.float64,
+        )
+
+    def _compute_faces(self) -> list[list[int]]:
+        return [
+            [3, 2, 1, 0],  # Bottom {001} pinacoid
+            [4, 5, 6, 7],  # Top {001} pinacoid
+            [0, 1, 5, 4],  # Front {010} face
+            [2, 3, 7, 6],  # Back {0-10} face
+            [0, 4, 7, 3],  # Left {-110} face (larger due to asymmetry)
+            [1, 2, 6, 5],  # Right {110} face
+        ]
+
+
 class Trapezohedron(CrystalHabit):
     """Tetragonal trapezohedron habit.
 

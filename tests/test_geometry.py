@@ -283,7 +283,7 @@ class TestTwinIntegration:
         assert len(geom.faces) >= 4
         assert geom.twin_metadata is not None
         assert geom.twin_metadata.twin_law == "Spinel Law (Macle)"
-        assert geom.twin_metadata.render_mode == "unified"
+        assert geom.twin_metadata.render_mode == "contact_rotation"
 
     def test_brazil_twin(self):
         """Test Brazil twin (quartz) - uses cubic octahedron as proxy."""

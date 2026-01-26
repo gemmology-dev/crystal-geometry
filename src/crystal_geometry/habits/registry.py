@@ -10,7 +10,14 @@ from .base import CrystalHabit
 from .cubic import Cube, Dodecahedron, Octahedron
 from .hexagonal import HexagonalBipyramid, HexagonalPrism
 from .orthorhombic import OrthorhombicPrism
-from .special import Barrel, Pyritohedron, QuartzCrystal, Tabular, Trapezohedron
+from .special import (
+    Barrel,
+    FeldsparTabular,
+    Pyritohedron,
+    QuartzCrystal,
+    Tabular,
+    Trapezohedron,
+)
 from .tetragonal import TetragonalBipyramid, TetragonalPrism
 
 # Registry of available habits
@@ -31,6 +38,7 @@ HABIT_REGISTRY: dict[str, type[CrystalHabit]] = {
     # Special habits
     "barrel": Barrel,
     "tabular": Tabular,
+    "feldspar_tabular": FeldsparTabular,
     "trapezohedron": Trapezohedron,
     "quartz_crystal": QuartzCrystal,
     "pyritohedron": Pyritohedron,
@@ -52,6 +60,10 @@ GEMSTONE_HABITS: dict[str, list[str]] = {
     "topaz": ["orthorhombic_prism"],
     "peridot": ["orthorhombic_prism", "tabular"],
     "chrysoberyl": ["tabular", "orthorhombic_prism"],
+    "feldspar": ["feldspar_tabular", "tabular"],
+    "orthoclase": ["feldspar_tabular", "tabular"],
+    "plagioclase": ["feldspar_tabular", "tabular"],
+    "albite": ["feldspar_tabular", "tabular"],
     "zircon": ["tetragonal_prism", "tetragonal_bipyramid"],
     "fluorite": ["cube", "octahedron"],
     "kunzite": ["orthorhombic_prism", "tabular"],

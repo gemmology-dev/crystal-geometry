@@ -51,18 +51,19 @@ class TwinLaw:
 
 # Twin law definitions
 # render_mode values:
-#   'unified'        - Single polyhedron via halfspace intersection (macles, fluorite)
-#   'dual_crystal'   - Two complete interpenetrating crystals (penetration crosses)
-#   'v_shaped'       - Two clipped halves forming V-shape (Japan, gypsum swallow-tail)
-#   'cyclic'         - Unified cyclic twin (trilling)
-#   'single_crystal' - External morphology unchanged (internal/electrical twins)
+#   'unified'          - Single polyhedron via halfspace intersection
+#   'dual_crystal'     - Two complete interpenetrating crystals (fluorite, staurolite, iron cross)
+#   'v_shaped'         - Two clipped halves with reflection (Japan, gypsum swallow-tail)
+#   'contact_rotation' - Two clipped halves with rotation (spinel, albite, manebach, baveno)
+#   'cyclic'           - Unified cyclic twin (trilling)
+#   'single_crystal'   - External morphology unchanged (internal/electrical twins)
 
 TWIN_LAWS: dict[str, TwinLaw] = {
     "spinel_law": TwinLaw(
         name="Spinel Law (Macle)",
-        description="180° rotation about [111] direction",
+        description="180° rotation about [111] with {111} composition plane",
         twin_type="contact",
-        render_mode="unified",
+        render_mode="contact_rotation",
         axis=DIRECTIONS["[111]"],
         angle=180.0,
         habit="octahedron",
@@ -91,12 +92,12 @@ TWIN_LAWS: dict[str, TwinLaw] = {
     ),
     "albite": TwinLaw(
         name="Albite Twin",
-        description="180° rotation about normal to (010)",
+        description="180° rotation about [010] with (010) composition plane",
         twin_type="contact",
-        render_mode="unified",
+        render_mode="contact_rotation",
         axis=DIRECTIONS["[010]"],
         angle=180.0,
-        habit="tabular",
+        habit="feldspar_tabular",
         examples=("plagioclase", "albite"),
     ),
     "brazil": TwinLaw(
@@ -107,6 +108,7 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         axis=DIRECTIONS["[110]"],
         angle=180.0,
         habit="quartz_crystal",
+        habit_params={"c_ratio": 2.5},
         examples=("quartz",),
     ),
     "dauphine": TwinLaw(
@@ -117,6 +119,7 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         axis=DIRECTIONS["[001]"],
         angle=180.0,
         habit="quartz_crystal",
+        habit_params={"c_ratio": 2.5},
         examples=("quartz",),
     ),
     "japan": TwinLaw(
@@ -127,6 +130,7 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         axis=DIRECTIONS["[11-2]"],
         angle=_JAPAN_ANGLE_QUARTZ,
         habit="quartz_crystal",
+        habit_params={"c_ratio": 2.5},
         examples=("quartz",),
     ),
     "trilling": TwinLaw(
@@ -143,7 +147,7 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         name="Fluorite Penetration Twin",
         description="Two cubes interpenetrating along [111]",
         twin_type="penetration",
-        render_mode="unified",
+        render_mode="dual_crystal",
         axis=DIRECTIONS["[111]"],
         angle=180.0,
         habit="cube",
@@ -173,20 +177,20 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         name="Manebach Twin",
         description="180° rotation about [001] with (001) composition plane",
         twin_type="contact",
-        render_mode="unified",
+        render_mode="contact_rotation",
         axis=DIRECTIONS["[001]"],
         angle=180.0,
-        habit="tabular",
+        habit="feldspar_tabular",
         examples=("orthoclase", "feldspar"),
     ),
     "baveno": TwinLaw(
         name="Baveno Twin",
-        description="180° rotation about [021] (feldspar)",
+        description="180° rotation about [021] with (021) composition plane",
         twin_type="contact",
-        render_mode="unified",
+        render_mode="contact_rotation",
         axis=DIRECTIONS["[021]"],
         angle=180.0,
-        habit="tabular",
+        habit="feldspar_tabular",
         examples=("orthoclase", "feldspar"),
     ),
     "gypsum_swallow": TwinLaw(

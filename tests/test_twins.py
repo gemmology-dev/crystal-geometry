@@ -122,6 +122,7 @@ class TestTwinLaws:
             "unified",
             "dual_crystal",
             "v_shaped",
+            "contact_rotation",
             "cyclic",
             "single_crystal",
         )
@@ -359,3 +360,203 @@ class TestTwinGeometryCorrectness:
         expected_dms = 84.0 + 33.0 / 60.0 + 30.0 / 3600.0
         assert np.isclose(law.angle, expected_dms, atol=1e-4)
         assert 84.55 < law.angle < 84.56
+
+
+class TestContactRotationGeometry:
+    """Tests for contact rotation twin geometry (spinel, albite, manebach, baveno)."""
+
+    def test_contact_rotation_produces_two_components(self):
+        """Contact rotation should produce two separate components."""
+        from crystal_geometry.twins.generators import ContactRotationGeometryGenerator
+
+        generator = ContactRotationGeometryGenerator()
+        # Octahedron normals
+        normals = np.array(
+            [
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, 1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float64,
+        )
+        normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        distances = np.ones(8)
+
+        twin_info = {"axis": np.array([1, 1, 1]) / np.sqrt(3), "angle": 180.0}
+        result = generator.generate(twin_info, normals, distances)
+
+        assert result.n_components == 2
+        assert result.render_mode == "separate"
+
+    def test_contact_rotation_components_share_composition_plane(self):
+        """Both components should have vertices on the composition plane."""
+        from crystal_geometry.twins.generators import ContactRotationGeometryGenerator
+
+        generator = ContactRotationGeometryGenerator()
+        # Octahedron normals
+        normals = np.array(
+            [
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, 1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float64,
+        )
+        normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        distances = np.ones(8)
+
+        twin_axis = np.array([1, 1, 1]) / np.sqrt(3)
+        twin_info = {"axis": twin_axis, "angle": 180.0}
+        result = generator.generate(twin_info, normals, distances)
+
+        # Both components should have vertices on the composition plane (dot product ≈ 0)
+        for comp in result.components:
+            verts = comp.get_transformed_vertices()
+            # Find vertices on composition plane
+            on_plane = np.abs(verts @ twin_axis) < 1e-5
+            assert np.any(on_plane), "Component should have vertices on composition plane"
+
+    def test_contact_rotation_euler_characteristic(self):
+        """Each contact rotation component should be a valid polyhedron (Euler = 2)."""
+        from crystal_geometry.twins.generators import ContactRotationGeometryGenerator
+
+        generator = ContactRotationGeometryGenerator()
+        # Octahedron normals
+        normals = np.array(
+            [
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, 1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float64,
+        )
+        normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        distances = np.ones(8)
+
+        twin_info = {"axis": np.array([1, 1, 1]) / np.sqrt(3), "angle": 180.0}
+        result = generator.generate(twin_info, normals, distances)
+
+        for comp in result.components:
+            V = len(comp.vertices)
+            F = len(comp.faces)
+            # Count edges (each edge shared by 2 faces)
+            edge_set = set()
+            for face in comp.faces:
+                for i in range(len(face)):
+                    edge = tuple(sorted([face[i], face[(i + 1) % len(face)]]))
+                    edge_set.add(edge)
+            E = len(edge_set)
+
+            euler = V - E + F
+            assert euler == 2, f"Euler characteristic should be 2, got {euler}"
+
+    def test_spinel_law_uses_contact_rotation_mode(self):
+        """Spinel twin law should use contact_rotation render mode."""
+        from crystal_geometry.twins import get_twin_law
+
+        law = get_twin_law("spinel_law")
+        assert law.render_mode == "contact_rotation"
+
+    def test_feldspar_twins_use_contact_rotation_mode(self):
+        """Feldspar twins (albite, manebach, baveno) should use contact_rotation."""
+        from crystal_geometry.twins import get_twin_law
+
+        for twin_name in ["albite", "manebach", "baveno"]:
+            law = get_twin_law(twin_name)
+            assert law.render_mode == "contact_rotation", f"{twin_name} should use contact_rotation"
+
+
+class TestFluoritePenetrationTwin:
+    """Tests for fluorite interpenetrating cube twin."""
+
+    def test_fluorite_twin_law_uses_dual_crystal(self):
+        """Fluorite twin law should use dual_crystal render mode."""
+        from crystal_geometry.twins import get_twin_law
+
+        law = get_twin_law("fluorite")
+        assert law.render_mode == "dual_crystal"
+
+    def test_fluorite_produces_two_complete_cubes(self):
+        """Each component should be a complete cube (6 faces)."""
+        from crystal_geometry.twins.generators import DualCrystalGeometryGenerator
+
+        generator = DualCrystalGeometryGenerator()
+        # Cube normals
+        normals = np.array(
+            [
+                [1, 0, 0],
+                [-1, 0, 0],
+                [0, 1, 0],
+                [0, -1, 0],
+                [0, 0, 1],
+                [0, 0, -1],
+            ],
+            dtype=np.float64,
+        )
+        distances = np.ones(6)
+
+        # Fluorite: 180° about [111]
+        twin_info = {"axis": np.array([1, 1, 1]) / np.sqrt(3), "angle": 180.0}
+        result = generator.generate(twin_info, normals, distances)
+
+        assert result.n_components == 2
+        assert result.render_mode == "separate"
+
+        # Each component should be a complete cube with 6 faces
+        for comp in result.components:
+            assert len(comp.faces) == 6, f"Expected 6 faces (cube), got {len(comp.faces)}"
+            assert len(comp.vertices) == 8, f"Expected 8 vertices (cube), got {len(comp.vertices)}"
+
+    def test_fluorite_twin_components_are_rotated(self):
+        """Second component should be rotated 180° about [111]."""
+        from crystal_geometry.twins.generators import DualCrystalGeometryGenerator
+
+        generator = DualCrystalGeometryGenerator()
+        # Cube normals
+        normals = np.array(
+            [
+                [1, 0, 0],
+                [-1, 0, 0],
+                [0, 1, 0],
+                [0, -1, 0],
+                [0, 0, 1],
+                [0, 0, -1],
+            ],
+            dtype=np.float64,
+        )
+        distances = np.ones(6)
+
+        twin_info = {"axis": np.array([1, 1, 1]) / np.sqrt(3), "angle": 180.0}
+        result = generator.generate(twin_info, normals, distances)
+
+        # Get centroids of the two cubes - they should be at origin
+        # but vertices should be in different positions
+        verts1 = result.components[0].get_transformed_vertices()
+        verts2 = result.components[1].get_transformed_vertices()
+
+        # Centroids should both be at origin
+        c1 = np.mean(verts1, axis=0)
+        c2 = np.mean(verts2, axis=0)
+        assert np.allclose(c1, [0, 0, 0], atol=1e-10)
+        assert np.allclose(c2, [0, 0, 0], atol=1e-10)
+
+        # But the vertex positions should be different (rotated)
+        # Sort vertices for comparison
+        sorted_v1 = verts1[np.lexsort(verts1.T)]
+        sorted_v2 = verts2[np.lexsort(verts2.T)]
+        assert not np.allclose(sorted_v1, sorted_v2, atol=1e-5)
