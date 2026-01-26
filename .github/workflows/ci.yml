@@ -43,10 +43,7 @@ jobs:
 
       - name: Install Eigen (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          brew install eigen
-          echo "CMAKE_PREFIX_PATH=$(brew --prefix eigen)" >> $GITHUB_ENV
-          echo "Eigen3_DIR=$(brew --prefix eigen)/share/eigen3/cmake" >> $GITHUB_ENV
+        run: brew install eigen
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -57,10 +54,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
-          # Enable verbose cmake output for debugging
+          # On macOS, pass Eigen path to CMake
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export CMAKE_ARGS="-DEigen3_DIR=$(brew --prefix eigen)/share/eigen3/cmake"
+          fi
           pip install -e ".[dev]" -v
-        env:
-          CMAKE_ARGS: "-DCMAKE_VERBOSE_MAKEFILE=ON"
 
       - name: Verify native module loaded
         run: |
