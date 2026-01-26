@@ -46,10 +46,14 @@ jobs:
         run: |
           brew install eigen
           echo "=== Eigen installation ==="
-          brew --prefix eigen
-          ls -la $(brew --prefix eigen)/
+          EIGEN_PREFIX=$(brew --prefix eigen)
+          echo "Eigen prefix: $EIGEN_PREFIX"
+          echo "=== Share directory ==="
+          ls -laR $EIGEN_PREFIX/share/ || true
           echo "=== Looking for cmake files ==="
-          find $(brew --prefix eigen) -name "*.cmake" -o -name "Eigen3*" 2>/dev/null || true
+          find $EIGEN_PREFIX -name "*.cmake" 2>/dev/null || true
+          echo "=== Looking for Eigen3Config ==="
+          find /opt/homebrew -name "Eigen3Config*" 2>/dev/null | head -5 || true
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
