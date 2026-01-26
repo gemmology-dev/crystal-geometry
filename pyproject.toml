@@ -62,13 +62,57 @@ docs = [
     "mkdocs-material>=9.0",
     "mkdocstrings[python]>=0.24"
 ]
+native = [
+    # Native acceleration is built from source via scikit-build-core
+    # No runtime dependencies needed (Eigen is header-only)
+]
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "scikit-build-core>=0.5",
+    "pybind11>=2.11",
+]
+build-backend = "scikit_build_core.build"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.scikit-build]
+# Use editable installs for development
+wheel.packages = ["src/crystal_geometry"]
+cmake.build-type = "Release"
+cmake.minimum-version = "3.15"
+build-dir = "build/{wheel_tag}"
+# Allow cmake to fail gracefully (pure Python fallback)
+strict-config = false
+cmake.verbose = false
+
+[tool.scikit-build.cmake.define]
+# Default options, can be overridden with CMAKE_ARGS env var
+USE_OPENMP = "OFF"
+
+# cibuildwheel configuration for cross-platform wheel building
+[tool.cibuildwheel]
+# Build for Python 3.10-3.13
+build = "cp310-* cp311-* cp312-* cp313-*"
+# Skip musllinux and PyPy
+skip = "*-musllinux* pp*"
+# Test the built wheel
+test-command = "python -c \"from crystal_geometry import get_backend; print(f'Backend: {get_backend()}')\""
+
+[tool.cibuildwheel.linux]
+before-all = "yum install -y eigen3-devel || (apt-get update && apt-get install -y libeigen3-dev)"
+repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.macos]
+before-all = "brew install eigen"
+repair-wheel-command = "delocate-wheel -w {dest_dir} {wheel}"
+
+[tool.cibuildwheel.windows]
+before-all = "choco install eigen -y"
+environment = { CMAKE_PREFIX_PATH = "C:\\ProgramData\\chocolatey\\lib\\eigen\\share\\eigen3\\cmake" }
+
+# Fallback to setuptools if scikit-build-core not available
+[tool.setuptools]
+packages = ["crystal_geometry"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 crystal_geometry = ["py.typed"]
@@ -110,3 +154,57 @@ addopts = "-v --tb=short"
 [tool.coverage.run]
 source = ["src/crystal_geometry"]
 branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+# Target: 80% coverage (current: ~62%)
+# Incrementally increase as coverage improves
+fail_under = 60
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+# Semantic Release configuration
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+upload_to_pypi = false  # We use separate pypi-publish workflow
+upload_to_release = true
+build_command = "pip install build && python -m build"
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+    "build",
+    "chore",
+    "ci",
+    "docs",
+    "feat",
+    "fix",
+    "perf",
+    "refactor",
+    "style",
+    "test",
+]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+[tool.semantic_release.changelog]
+template_dir = ".github/templates"
+changelog_file = "CHANGELOG.md"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+# Bandit security configuration
+[tool.bandit]
+exclude_dirs = ["tests", "benchmarks"]
+skips = ["B101"]  # Skip assert warnings (we use assert in tests)

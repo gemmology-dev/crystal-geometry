@@ -5,13 +5,18 @@ Computes 3D crystal geometry from CDL descriptions.
 Uses half-space intersection to combine crystal forms.
 """
 
+from __future__ import annotations
+
+import itertools
+
 import numpy as np
 from scipy.optimize import linprog
-from scipy.spatial import HalfspaceIntersection, cKDTree
+from scipy.spatial import HalfspaceIntersection
 
 from cdl_parser import CrystalDescription, parse_cdl
 
-from .models import CrystalGeometry
+from ._accel import prefer_native
+from .models import CrystalGeometry, TwinMetadata
 from .symmetry import (
     generate_equivalent_faces,
     get_lattice_for_system,
@@ -19,6 +24,24 @@ from .symmetry import (
 )
 
 
+def _spatial_hash_key(vertex: np.ndarray, cell_size: float) -> tuple[int, int, int]:
+    """Compute spatial hash key for a vertex.
+
+    Args:
+        vertex: 3D vertex position
+        cell_size: Size of hash grid cells
+
+    Returns:
+        Tuple of (x, y, z) cell indices
+    """
+    return (
+        int(np.floor(vertex[0] / cell_size)),
+        int(np.floor(vertex[1] / cell_size)),
+        int(np.floor(vertex[2] / cell_size)),
+    )
+
+
+@prefer_native
 def _find_interior_point(
     normals: np.ndarray,
     distances: np.ndarray
@@ -30,12 +53,16 @@ def _find_interior_point(
     interior point.
 
     Args:
-        normals: Nx3 array of unit normal vectors
-        distances: N array of distances
+        normals: Nx3 array of unit normal vectors (must be contiguous)
+        distances: N array of distances (must be contiguous)
 
     Returns:
         Interior point as 3-element array, or None if no solution
     """
+    # Ensure contiguous arrays for optimal performance
+    normals = np.ascontiguousarray(normals, dtype=np.float64)
+    distances = np.ascontiguousarray(distances, dtype=np.float64)
+
     n_constraints = len(normals)
 
     # Maximize r subject to: n_i · x + r <= d_i
@@ -118,9 +145,10 @@ def _iterative_interior_point(
     return centroid
 
 
+@prefer_native
 def halfspace_intersection_3d(
-    normals: list[np.ndarray],
-    distances: list[float],
+    normals: list[np.ndarray] | np.ndarray,
+    distances: list[float] | np.ndarray,
     interior_point: np.ndarray | None = None
 ) -> np.ndarray | None:
     """Compute intersection of half-spaces in 3D.
@@ -128,15 +156,16 @@ def halfspace_intersection_3d(
     Each half-space is defined by: normal . x <= distance
 
     Args:
-        normals: List of unit normal vectors pointing outward
-        distances: List of distances from origin to each plane
+        normals: List or array of unit normal vectors pointing outward
+        distances: List or array of distances from origin to each plane
         interior_point: A point known to be inside the intersection
 
     Returns:
         Array of vertices, or None if intersection is empty/unbounded
     """
-    normals_arr = np.array(normals)
-    distances_arr = np.array(distances)
+    # Ensure contiguous arrays for optimal performance
+    normals_arr = np.ascontiguousarray(normals, dtype=np.float64)
+    distances_arr = np.ascontiguousarray(distances, dtype=np.float64)
 
     if interior_point is None:
         # Try Chebyshev center first (most robust)
@@ -167,11 +196,15 @@ def halfspace_intersection_3d(
             return None
 
 
+@prefer_native
 def _deduplicate_vertices(
     vertices: np.ndarray,
     tolerance: float = 1e-8
 ) -> np.ndarray:
-    """Remove duplicate vertices using KD-tree for O(n log n) performance.
+    """Remove duplicate vertices using spatial hashing for O(n) performance.
+
+    Uses a hash grid to achieve approximately O(n) complexity by only
+    checking nearby cells for potential duplicates.
 
     Args:
         vertices: Nx3 array of vertex positions
@@ -183,30 +216,41 @@ def _deduplicate_vertices(
     if len(vertices) == 0:
         return vertices
 
-    # Build KD-tree for efficient nearest neighbor queries
-    tree = cKDTree(vertices)
+    # Ensure contiguous array
+    vertices = np.ascontiguousarray(vertices, dtype=np.float64)
 
-    # Find clusters of nearby vertices
-    unique_indices = []
-    visited = set()
+    # Use cell size slightly larger than tolerance to ensure we check all neighbors
+    cell_size = tolerance * 2
+    tolerance_sq = tolerance * tolerance
+
+    # Hash table: key -> first vertex index in that cell
+    seen: dict[tuple[int, int, int], int] = {}
+    unique_indices: list[int] = []
 
     for i in range(len(vertices)):
-        if i in visited:
-            continue
+        v = vertices[i]
+        key = _spatial_hash_key(v, cell_size)
 
-        # Find all vertices within tolerance
-        neighbors = tree.query_ball_point(vertices[i], tolerance)
+        # Check this cell and all 26 neighbors for potential duplicates
+        found_duplicate = False
+        for dx, dy, dz in itertools.product((-1, 0, 1), repeat=3):
+            neighbor_key = (key[0] + dx, key[1] + dy, key[2] + dz)
+            if neighbor_key in seen:
+                existing_idx = seen[neighbor_key]
+                diff = v - vertices[existing_idx]
+                # Use squared distance to avoid sqrt
+                if diff @ diff < tolerance_sq:
+                    found_duplicate = True
+                    break
 
-        # Mark all neighbors as visited
-        for n in neighbors:
-            visited.add(n)
-
-        # Keep only the first vertex in this cluster
-        unique_indices.append(i)
+        if not found_duplicate:
+            seen[key] = i
+            unique_indices.append(i)
 
     return vertices[unique_indices]
 
 
+@prefer_native
 def compute_face_vertices(
     vertices: np.ndarray,
     normal: np.ndarray,
@@ -215,66 +259,69 @@ def compute_face_vertices(
 ) -> list[int]:
     """Find vertices that lie on a face plane.
 
+    Uses vectorized operations for improved performance.
+
     Args:
-        vertices: All vertices
-        normal: Face normal
+        vertices: All vertices (Nx3 array)
+        normal: Face normal (3-element array)
         distance: Distance from origin to face plane
         tolerance: Numerical tolerance
 
     Returns:
         List of vertex indices on this face, ordered counter-clockwise
     """
-    # Find vertices on plane: normal . v = distance
-    on_face = []
-    for i, v in enumerate(vertices):
-        d = np.dot(normal, v)
-        if abs(d - distance) < tolerance:
-            on_face.append(i)
+    # Ensure contiguous arrays
+    vertices = np.ascontiguousarray(vertices, dtype=np.float64)
+    normal = np.ascontiguousarray(normal, dtype=np.float64)
 
-    if len(on_face) < 3:
+    # Vectorized distance computation for all vertices
+    projections = vertices @ normal
+    on_face_mask = np.abs(projections - distance) < tolerance
+    on_face_indices = np.where(on_face_mask)[0]
+
+    if len(on_face_indices) < 3:
         return []
 
+    # Get vertices on face
+    on_face_verts = vertices[on_face_indices]
+
     # Order vertices counter-clockwise when viewed from outside
-    center = np.mean(vertices[on_face], axis=0)
+    center = np.mean(on_face_verts, axis=0)
 
     # Create local coordinate system on face
-    u = vertices[on_face[0]] - center
+    u = on_face_verts[0] - center
     u = u - np.dot(u, normal) * normal
-    if np.linalg.norm(u) < tolerance:
-        if len(on_face) > 1:
-            u = vertices[on_face[1]] - center
+    u_norm = u @ u  # squared norm
+    if u_norm < tolerance * tolerance:
+        if len(on_face_indices) > 1:
+            u = on_face_verts[1] - center
             u = u - np.dot(u, normal) * normal
-    u = u / (np.linalg.norm(u) + 1e-10)
-    v = np.cross(normal, u)
+            u_norm = u @ u
+    u = u / (np.sqrt(u_norm) + 1e-10)
+    v_axis = np.cross(normal, u)
 
-    # Compute angles
-    angles = []
-    for idx in on_face:
-        vec = vertices[idx] - center
-        angle = np.arctan2(np.dot(vec, v), np.dot(vec, u))
-        angles.append((angle, idx))
+    # Vectorized angle computation
+    vecs = on_face_verts - center
+    angles = np.arctan2(vecs @ v_axis, vecs @ u)
 
     # Sort by angle
-    angles.sort()
-    return [idx for _, idx in angles]
+    sorted_order = np.argsort(angles)
+    return [int(on_face_indices[i]) for i in sorted_order]
 
 
-def cdl_to_geometry(
+def _build_halfspaces(
     desc: CrystalDescription,
-    c_ratio: float = 1.0
-) -> CrystalGeometry:
-    """Convert CDL description to 3D geometry.
+    lattice: np.ndarray
+) -> tuple[list[np.ndarray], list[float], list[int], list[tuple[int, int, int]]]:
+    """Build halfspaces from CDL forms.
 
     Args:
         desc: Parsed CDL description
-        c_ratio: c/a ratio for non-cubic systems
+        lattice: Lattice vectors
 
     Returns:
-        CrystalGeometry with vertices and faces
+        Tuple of (normals, distances, face_form_indices, face_millers)
     """
-    lattice = get_lattice_for_system(desc.system, c_ratio)
-
-    # Collect all half-spaces from all forms
     normals = []
     distances = []
     face_form_indices = []
@@ -296,13 +343,35 @@ def cdl_to_geometry(
             face_form_indices.append(form_idx)
             face_millers.append(eq_miller)
 
+    return normals, distances, face_form_indices, face_millers
+
+
+def _generate_base_geometry(
+    normals: list[np.ndarray],
+    distances: list[float],
+    face_form_indices: list[int],
+    face_millers: list[tuple[int, int, int]],
+    forms: list,
+) -> CrystalGeometry:
+    """Generate base crystal geometry from halfspaces.
+
+    Args:
+        normals: Face normals
+        distances: Face distances
+        face_form_indices: Form index for each face
+        face_millers: Miller indices for each face
+        forms: Original form list
+
+    Returns:
+        CrystalGeometry
+    """
     # Compute half-space intersection
     vertices = halfspace_intersection_3d(normals, distances)
 
     if vertices is None or len(vertices) < 4:
         raise ValueError("Failed to compute crystal geometry - no valid intersection")
 
-    # Remove duplicate vertices using KD-tree for O(n log n) performance
+    # Remove duplicate vertices
     vertices = _deduplicate_vertices(vertices)
 
     # Build faces
@@ -325,8 +394,190 @@ def cdl_to_geometry(
         face_normals=face_normals_list,
         face_forms=final_face_forms,
         face_millers=final_face_millers,
-        forms=desc.forms
+        forms=forms
     )
+
+
+def _generate_twinned_geometry(
+    desc: CrystalDescription,
+    normals: list[np.ndarray],
+    distances: list[float],
+    face_form_indices: list[int],
+    face_millers: list[tuple[int, int, int]],
+) -> CrystalGeometry:
+    """Generate twinned crystal geometry.
+
+    Args:
+        desc: CDL description with twin specification
+        normals: Base halfspace normals
+        distances: Base halfspace distances
+        face_form_indices: Form indices
+        face_millers: Miller indices
+
+    Returns:
+        CrystalGeometry with twin metadata
+    """
+    from .twins import get_generator, get_twin_law
+
+    twin_spec = desc.twin
+    assert twin_spec is not None
+
+    # Get the twin law or create custom one
+    if twin_spec.law:
+        twin_law = get_twin_law(twin_spec.law)
+        twin_axis = twin_law.axis
+        twin_angle = twin_law.angle
+        render_mode = twin_law.render_mode
+        twin_type = twin_law.twin_type
+        law_name = twin_law.name
+    else:
+        # Custom twin law from axis/angle
+        twin_axis = np.array(twin_spec.axis) if twin_spec.axis else np.array([1, 1, 1])
+        twin_axis = twin_axis / np.linalg.norm(twin_axis)
+        twin_angle = twin_spec.angle
+        twin_type = twin_spec.twin_type
+        render_mode = "dual_crystal"  # Default for custom
+        law_name = "custom"
+
+    # Get the appropriate generator
+    generator = get_generator(render_mode)
+
+    # Convert to numpy arrays
+    normals_arr = np.array(normals)
+    distances_arr = np.array(distances)
+
+    # Build twin_info dict for generator
+    twin_info = {
+        'axis': twin_axis,
+        'angle': twin_angle,
+        'type': twin_type,
+        'n_fold': twin_spec.count if twin_spec.count > 2 else None,
+    }
+
+    # Generate twinned geometry
+    twin_result = generator.generate(
+        twin_info=twin_info,
+        normals=normals_arr,
+        distances=distances_arr,
+    )
+
+    # Get vertices and faces from twin result
+    all_vertices = twin_result.get_all_vertices()
+    all_vertices = _deduplicate_vertices(all_vertices)
+
+    # Get faces from the twin result
+    all_faces = twin_result.get_all_faces()
+    face_attribution = twin_result.get_face_attribution()
+
+    # Build face data
+    faces = []
+    face_normals_list = []
+    final_face_forms = []
+    final_face_millers = []
+    component_ids = []
+
+    # For unified geometry, faces are already computed
+    if twin_result.render_mode == 'unified' and twin_result.components:
+        component = twin_result.components[0]
+        for i, face in enumerate(component.faces):
+            if len(face) >= 3:
+                # Recompute face indices for deduplicated vertices
+                face_center = np.mean(component.vertices[face], axis=0)
+                # Find face normal from original normals
+                form_idx = i % len(normals)
+                normal = normals[form_idx]
+                face_verts = compute_face_vertices(all_vertices, normal, distances[form_idx])
+                if len(face_verts) >= 3:
+                    faces.append(face_verts)
+                    face_normals_list.append(normal)
+                    final_face_forms.append(face_form_indices[form_idx])
+                    final_face_millers.append(face_millers[form_idx])
+                    comp_id = face_attribution[i] if i < len(face_attribution) else 0
+                    component_ids.append(comp_id)
+    else:
+        # For dual/v-shaped/cyclic: rebuild faces from components
+        for comp_idx, component in enumerate(twin_result.components):
+            # Get 3x3 rotation from 4x4 transform
+            R = component.transform[:3, :3]
+            comp_vertices = component.get_transformed_vertices()
+
+            for i in range(len(normals)):
+                rotated_normal = R @ normals_arr[i]
+                face_verts = compute_face_vertices(all_vertices, rotated_normal, distances_arr[i])
+                if len(face_verts) >= 3:
+                    faces.append(face_verts)
+                    face_normals_list.append(rotated_normal)
+                    final_face_forms.append(face_form_indices[i])
+                    final_face_millers.append(face_millers[i])
+                    component_ids.append(comp_idx)
+
+    # Create twin metadata
+    twin_metadata = TwinMetadata(
+        twin_law=law_name,
+        render_mode=render_mode,
+        n_components=twin_result.n_components,
+        twin_axis=tuple(twin_axis.tolist()),
+        twin_angle=twin_angle,
+        face_attribution=component_ids,
+    )
+
+    return CrystalGeometry(
+        vertices=all_vertices,
+        faces=faces,
+        face_normals=face_normals_list,
+        face_forms=final_face_forms,
+        face_millers=final_face_millers,
+        forms=desc.forms,
+        component_ids=component_ids,
+        twin_metadata=twin_metadata,
+    )
+
+
+def cdl_to_geometry(
+    desc: CrystalDescription,
+    c_ratio: float = 1.0
+) -> CrystalGeometry:
+    """Convert CDL description to 3D geometry.
+
+    Args:
+        desc: Parsed CDL description
+        c_ratio: c/a ratio for non-cubic systems
+
+    Returns:
+        CrystalGeometry with vertices and faces
+    """
+    lattice = get_lattice_for_system(desc.system, c_ratio)
+
+    # Build halfspaces from forms
+    normals, distances, face_form_indices, face_millers = _build_halfspaces(
+        desc, lattice
+    )
+
+    # Generate geometry (twinned or base)
+    if desc.twin is not None:
+        geometry = _generate_twinned_geometry(
+            desc, normals, distances, face_form_indices, face_millers
+        )
+    else:
+        geometry = _generate_base_geometry(
+            normals, distances, face_form_indices, face_millers, desc.forms
+        )
+
+    # Apply modifications if present
+    if desc.modifications:
+        from .modifications import apply_modifications
+        geometry = CrystalGeometry(
+            vertices=apply_modifications(geometry.vertices, desc.modifications),
+            faces=geometry.faces,
+            face_normals=geometry.face_normals,
+            face_forms=geometry.face_forms,
+            face_millers=geometry.face_millers,
+            forms=geometry.forms,
+            component_ids=geometry.component_ids,
+            twin_metadata=geometry.twin_metadata,
+        )
+
+    return geometry
 
 
 def cdl_string_to_geometry(cdl: str, c_ratio: float = 1.0) -> CrystalGeometry:

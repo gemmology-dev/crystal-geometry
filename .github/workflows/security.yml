@@ -1,0 +1,154 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 9am UTC
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: read
+  security-events: write  # Required for CodeQL
+
+jobs:
+  # CodeQL static analysis (GitHub's free SAST)
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          # Use extended queries for more comprehensive analysis
+          queries: +security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+
+  # Bandit - Python-specific security linter
+  bandit:
+    name: Bandit Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit
+        run: |
+          bandit -r src/ -f json -o bandit-report.json --exit-zero
+          bandit -r src/ -f txt --exit-zero
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
+      - name: Bandit strict check
+        run: |
+          # Fail on high-severity issues only
+          bandit -r src/ -ll -ii
+
+  # Safety - Check dependencies for known vulnerabilities
+  safety:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install safety pip-audit
+          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install -e ".[dev]" --no-build-isolation || pip install numpy scipy
+
+      - name: Run pip-audit (preferred, more up-to-date database)
+        run: |
+          pip-audit --format json --output pip-audit-report.json || true
+          pip-audit --format markdown --output pip-audit-report.md || true
+          pip-audit
+
+      - name: Upload pip-audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit-report
+          path: |
+            pip-audit-report.json
+            pip-audit-report.md
+
+  # License compliance check
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install pip-licenses
+        run: pip install pip-licenses
+
+      - name: Install project dependencies
+        run: |
+          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install -e ".[dev]" --no-build-isolation || pip install numpy scipy
+
+      - name: Check licenses
+        run: |
+          echo "## Dependency Licenses" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          pip-licenses --format=markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify MIT compatibility
+        run: |
+          # List of licenses compatible with MIT
+          pip-licenses --allow-only="MIT;BSD-3-Clause;BSD-2-Clause;Apache-2.0;ISC;PSF-2.0;Python-2.0;LGPL-2.1-or-later;LGPL-3.0-or-later;MPL-2.0;Unlicense;CC0-1.0;Public Domain" || {
+            echo "::warning::Some dependencies may have incompatible licenses. Please review."
+            pip-licenses --format=markdown
+          }
+
+  # Secret scanning (check for accidentally committed secrets)
+  secrets:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive scan
+
+      - name: Detect secrets with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
