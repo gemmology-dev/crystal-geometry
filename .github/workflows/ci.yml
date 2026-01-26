@@ -57,7 +57,7 @@ jobs:
           pip install -e ".[dev]" -v
         env:
           # On macOS, tell CMake where to find Eigen (installed via Homebrew)
-          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DEigen3_DIR=/opt/homebrew/opt/eigen/share/eigen3/cmake' || '' }}
+          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DCMAKE_PREFIX_PATH=/opt/homebrew' || '' }}
 
       - name: Verify native module loaded
         run: |
