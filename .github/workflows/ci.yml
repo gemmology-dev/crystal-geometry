@@ -54,11 +54,10 @@ jobs:
       - name: Install dependencies
         run: |
           pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
-          # On macOS, pass Eigen path to CMake
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            export CMAKE_ARGS="-DEigen3_DIR=$(brew --prefix eigen)/share/eigen3/cmake"
-          fi
           pip install -e ".[dev]" -v
+        env:
+          # On macOS, tell CMake where to find Eigen (installed via Homebrew)
+          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DEigen3_DIR=/opt/homebrew/opt/eigen/share/eigen3/cmake' || '' }}
 
       - name: Verify native module loaded
         run: |
