@@ -177,15 +177,15 @@ class FeldsparTabular(CrystalHabit):
         return np.array(
             [
                 # Bottom face (z = -h)
-                [-1.0, y_front, -h],           # 0: front-left
-                [x_front, y_front, -h],        # 1: front-right
-                [x_back_right, y_back, -h],    # 2: back-right
-                [x_back_left, y_back, -h],     # 3: back-left (asymmetric)
+                [-1.0, y_front, -h],  # 0: front-left
+                [x_front, y_front, -h],  # 1: front-right
+                [x_back_right, y_back, -h],  # 2: back-right
+                [x_back_left, y_back, -h],  # 3: back-left (asymmetric)
                 # Top face (z = +h)
-                [-1.0, y_front, h],            # 4: front-left
-                [x_front, y_front, h],         # 5: front-right
-                [x_back_right, y_back, h],     # 6: back-right
-                [x_back_left, y_back, h],      # 7: back-left (asymmetric)
+                [-1.0, y_front, h],  # 4: front-left
+                [x_front, y_front, h],  # 5: front-right
+                [x_back_right, y_back, h],  # 6: back-right
+                [x_back_left, y_back, h],  # 7: back-left (asymmetric)
             ],
             dtype=np.float64,
         )
