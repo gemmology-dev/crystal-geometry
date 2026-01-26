@@ -37,9 +37,13 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
           # Skip musllinux (Alpine) and PyPy
           CIBW_SKIP: "*-musllinux* pp*"
-          # Install Eigen before building
+          # Install Eigen before building (detect package manager)
           CIBW_BEFORE_ALL_LINUX: |
-            yum install -y eigen3-devel || apt-get update && apt-get install -y libeigen3-dev
+            if command -v yum &> /dev/null; then
+              yum install -y eigen3-devel
+            elif command -v apt-get &> /dev/null; then
+              apt-get update && apt-get install -y libeigen3-dev
+            fi
           CIBW_BEFORE_ALL_MACOS: |
             brew install eigen
           CIBW_BEFORE_ALL_WINDOWS: |
