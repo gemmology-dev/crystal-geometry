@@ -452,9 +452,6 @@ def _generate_twinned_geometry(
     all_vertices = twin_result.get_all_vertices()
     all_vertices = _deduplicate_vertices(all_vertices)
 
-    # Get face attribution from the twin result
-    face_attribution = twin_result.get_face_attribution()
-
     # Build face data
     faces = []
     face_normals_list = []
@@ -471,7 +468,7 @@ def _generate_twinned_geometry(
         meta = twin_result.metadata
         n_components = meta.get("n_original_components", 2)
 
-        for i, face in enumerate(component.faces):
+        for face in component.faces:
             if len(face) < 3:
                 continue
 
