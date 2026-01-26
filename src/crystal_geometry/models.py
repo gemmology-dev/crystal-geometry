@@ -13,6 +13,37 @@ from cdl_parser import CrystalForm
 
 
 @dataclass
+class TwinMetadata:
+    """Metadata for twinned crystal geometry.
+
+    Attributes:
+        twin_law: Name of the twin law used
+        render_mode: Rendering strategy ('unified', 'separate', etc.)
+        n_components: Number of crystal components
+        twin_axis: Rotation axis as (x, y, z) tuple
+        twin_angle: Rotation angle in degrees
+        face_attribution: Optional array mapping faces to components
+    """
+    twin_law: str
+    render_mode: str
+    n_components: int
+    twin_axis: tuple[float, float, float]
+    twin_angle: float
+    face_attribution: list[int] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            'twin_law': self.twin_law,
+            'render_mode': self.render_mode,
+            'n_components': self.n_components,
+            'twin_axis': self.twin_axis,
+            'twin_angle': self.twin_angle,
+            'face_attribution': self.face_attribution,
+        }
+
+
+@dataclass
 class CrystalGeometry:
     """3D crystal geometry with vertices and faces.
 
@@ -23,6 +54,8 @@ class CrystalGeometry:
         face_forms: Which form each face belongs to (index into forms list)
         face_millers: Miller index (h, k, l) for each face
         forms: Original form definitions from CDL
+        component_ids: Optional array of component IDs for each face (for twins)
+        twin_metadata: Optional metadata for twinned crystals
     """
     vertices: np.ndarray  # Nx3 array of vertex positions
     faces: list[list[int]]  # List of faces, each face is list of vertex indices
@@ -30,6 +63,8 @@ class CrystalGeometry:
     face_forms: list[int]  # Which form each face belongs to (index into forms list)
     face_millers: list[tuple[int, int, int]]  # Miller index for each face
     forms: list[CrystalForm] = field(default_factory=list)  # Original form definitions
+    component_ids: list[int] | None = None  # Component ID for each face (for twins)
+    twin_metadata: TwinMetadata | None = None  # Metadata for twinned crystals
 
     def get_edges(self) -> list[tuple[int, int]]:
         """Get all unique edges as vertex index pairs.
@@ -131,13 +166,18 @@ class CrystalGeometry:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
-        return {
+        result = {
             'vertices': self.vertices.tolist(),
             'faces': self.faces,
             'face_normals': [n.tolist() for n in self.face_normals],
             'face_forms': self.face_forms,
             'face_millers': self.face_millers,
         }
+        if self.component_ids is not None:
+            result['component_ids'] = self.component_ids
+        if self.twin_metadata is not None:
+            result['twin_metadata'] = self.twin_metadata.to_dict()
+        return result
 
 
 @dataclass

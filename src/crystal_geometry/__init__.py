@@ -35,7 +35,7 @@ from .geometry import (
 )
 
 # Data classes
-from .models import DEFAULT_LATTICE, CrystalGeometry, LatticeParams
+from .models import DEFAULT_LATTICE, CrystalGeometry, LatticeParams, TwinMetadata
 
 # Symmetry operations
 from .symmetry import (
@@ -43,6 +43,66 @@ from .symmetry import (
     get_lattice_for_system,
     get_point_group_operations,
     miller_to_normal,
+)
+
+# Twin system
+from .twins import (
+    DIRECTIONS,
+    GEMSTONE_TWINS,
+    GEOMETRY_GENERATORS,
+    TWIN_LAWS,
+    CrystalComponent,
+    TwinGeometry,
+    TwinGeometryGenerator,
+    TwinLaw,
+    get_gemstone_twins,
+    get_generator,
+    get_twin_law,
+    list_generators,
+    list_twin_laws,
+    reflection_matrix,
+    rotation_matrix_axis_angle,
+)
+
+# Habit system
+from .habits import (
+    GEMSTONE_HABITS,
+    HABIT_REGISTRY,
+    Barrel,
+    Cube,
+    CrystalHabit,
+    Dodecahedron,
+    HexagonalBipyramid,
+    HexagonalPrism,
+    Octahedron,
+    OrthorhombicPrism,
+    Pyritohedron,
+    QuartzCrystal,
+    Tabular,
+    TetragonalBipyramid,
+    TetragonalPrism,
+    Trapezohedron,
+    get_gemstone_habits,
+    get_habit,
+    list_habits,
+)
+
+# Modifications
+from .modifications import (
+    AXIS_MAP,
+    apply_elongation,
+    apply_flatten,
+    apply_modifications,
+    apply_taper,
+    apply_twist,
+)
+
+# Acceleration / Backend info
+from ._accel import (
+    get_backend,
+    get_backend_info,
+    get_num_threads,
+    set_num_threads,
 )
 
 __all__ = [
@@ -62,9 +122,58 @@ __all__ = [
     "CrystalGeometry",
     "LatticeParams",
     "DEFAULT_LATTICE",
+    "TwinMetadata",
     # Symmetry
     "generate_equivalent_faces",
     "get_point_group_operations",
     "miller_to_normal",
     "get_lattice_for_system",
+    # Twin system
+    "TwinLaw",
+    "TWIN_LAWS",
+    "GEMSTONE_TWINS",
+    "get_twin_law",
+    "list_twin_laws",
+    "get_gemstone_twins",
+    "rotation_matrix_axis_angle",
+    "reflection_matrix",
+    "DIRECTIONS",
+    "TwinGeometryGenerator",
+    "TwinGeometry",
+    "CrystalComponent",
+    "GEOMETRY_GENERATORS",
+    "get_generator",
+    "list_generators",
+    # Habit system
+    "CrystalHabit",
+    "HABIT_REGISTRY",
+    "GEMSTONE_HABITS",
+    "get_habit",
+    "list_habits",
+    "get_gemstone_habits",
+    "Octahedron",
+    "Cube",
+    "Dodecahedron",
+    "HexagonalPrism",
+    "HexagonalBipyramid",
+    "TetragonalPrism",
+    "TetragonalBipyramid",
+    "OrthorhombicPrism",
+    "Barrel",
+    "Tabular",
+    "Trapezohedron",
+    "QuartzCrystal",
+    "Pyritohedron",
+    # Modifications
+    "apply_modifications",
+    "apply_elongation",
+    "apply_taper",
+    "apply_flatten",
+    "apply_twist",
+    "AXIS_MAP",
+    # Backend / Acceleration
+    "get_backend",
+    "get_backend_info",
+    "get_num_threads",
+    "set_num_threads",
 ]

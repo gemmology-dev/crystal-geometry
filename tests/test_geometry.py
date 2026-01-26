@@ -251,3 +251,150 @@ class TestIntegration:
         geom = cdl_string_to_geometry("tetragonal[4/mmm]:{101}")
         assert geom.is_valid()
         assert len(geom.faces) == 8  # 4 upper + 4 lower
+
+
+# =============================================================================
+# Twin Integration Tests
+# =============================================================================
+
+class TestTwinIntegration:
+    """Test twin integration in cdl_to_geometry."""
+
+    def test_spinel_twin(self):
+        """Test spinel law twin (macle)."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, TwinSpec
+
+        desc = CrystalDescription(
+            system='cubic',
+            point_group='m3m',
+            forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
+            twin=TwinSpec(law='spinel_law'),
+        )
+
+        geom = cdl_to_geometry(desc)
+        # Twin geometry may not satisfy simple Euler (interpenetrating polyhedra)
+        assert len(geom.vertices) >= 4
+        assert len(geom.faces) >= 4
+        assert geom.twin_metadata is not None
+        assert geom.twin_metadata.twin_law == 'Spinel Law (Macle)'
+        assert geom.twin_metadata.render_mode == 'unified'
+
+    def test_brazil_twin(self):
+        """Test Brazil twin (quartz) - uses cubic octahedron as proxy."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, TwinSpec
+
+        # Use cubic octahedron as a simple test case for Brazil twin
+        desc = CrystalDescription(
+            system='cubic',
+            point_group='m3m',
+            forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
+            twin=TwinSpec(law='brazil'),
+        )
+
+        geom = cdl_to_geometry(desc)
+        assert len(geom.vertices) >= 4
+        assert len(geom.faces) >= 4
+        assert geom.twin_metadata is not None
+        assert 'Brazil' in geom.twin_metadata.twin_law
+        assert geom.twin_metadata.render_mode == 'dual_crystal'
+
+    def test_custom_twin(self):
+        """Test custom twin axis/angle."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, TwinSpec
+
+        desc = CrystalDescription(
+            system='cubic',
+            point_group='m3m',
+            forms=[CrystalForm(miller=MillerIndex(1, 1, 1), scale=1.0)],
+            twin=TwinSpec(axis=(1, 1, 1), angle=180.0, twin_type='contact'),
+        )
+
+        geom = cdl_to_geometry(desc)
+        assert len(geom.vertices) >= 4
+        assert geom.twin_metadata is not None
+        assert geom.twin_metadata.twin_law == 'custom'
+
+    def test_no_twin(self):
+        """Test geometry without twin has no twin_metadata."""
+        geom = cdl_string_to_geometry("cubic[m3m]:{111}")
+        assert geom.is_valid()
+        assert geom.twin_metadata is None
+
+
+# =============================================================================
+# Modification Integration Tests
+# =============================================================================
+
+class TestModificationIntegration:
+    """Test modification integration in cdl_to_geometry."""
+
+    def test_elongation(self):
+        """Test elongation modifier."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, Modification
+
+        desc = CrystalDescription(
+            system='cubic',
+            point_group='m3m',
+            forms=[CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0)],
+            modifications=[Modification(type='elongate', params={'axis': 'c', 'ratio': 2.0})],
+        )
+
+        geom = cdl_to_geometry(desc)
+        assert geom.is_valid()
+
+        # Z coordinates should be doubled relative to unmodified
+        z_range = geom.vertices[:, 2].max() - geom.vertices[:, 2].min()
+        x_range = geom.vertices[:, 0].max() - geom.vertices[:, 0].min()
+        # After elongation along c by 2x, z_range should be ~2x x_range
+        assert z_range > x_range * 1.5
+
+    def test_taper(self):
+        """Test taper modifier on hexagonal prism."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, Modification
+
+        # Use hexagonal prism with correct Miller-Bravais notation: h+k+i=0
+        # {10-10} -> h=1, k=0, i=-1, l=0
+        desc = CrystalDescription(
+            system='hexagonal',
+            point_group='6/mmm',
+            forms=[
+                CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0),  # Use 3-index for simplicity
+                CrystalForm(miller=MillerIndex(0, 0, 1), scale=1.5),
+            ],
+            modifications=[Modification(type='taper', params={'direction': '+c', 'factor': 0.5})],
+        )
+
+        geom = cdl_to_geometry(desc)
+        assert geom.is_valid()
+
+        # Top vertices should have smaller x,y extent than bottom
+        z_mid = (geom.vertices[:, 2].max() + geom.vertices[:, 2].min()) / 2
+        top_verts = geom.vertices[geom.vertices[:, 2] > z_mid]
+        bot_verts = geom.vertices[geom.vertices[:, 2] < z_mid]
+
+        if len(top_verts) > 0 and len(bot_verts) > 0:
+            top_extent = np.sqrt(top_verts[:, 0]**2 + top_verts[:, 1]**2).max()
+            bot_extent = np.sqrt(bot_verts[:, 0]**2 + bot_verts[:, 1]**2).max()
+            assert top_extent < bot_extent
+
+    def test_multiple_modifications(self):
+        """Test multiple modifications applied in sequence."""
+        from cdl_parser import CrystalDescription, CrystalForm, MillerIndex, Modification
+
+        desc = CrystalDescription(
+            system='cubic',
+            point_group='m3m',
+            forms=[CrystalForm(miller=MillerIndex(1, 0, 0), scale=1.0)],
+            modifications=[
+                Modification(type='elongate', params={'axis': 'c', 'ratio': 2.0}),
+                Modification(type='taper', params={'direction': '+c', 'factor': 0.5}),
+            ],
+        )
+
+        geom = cdl_to_geometry(desc)
+        assert geom.is_valid()
+
+    def test_no_modifications(self):
+        """Test geometry without modifications."""
+        geom = cdl_string_to_geometry("cubic[m3m]:{111}")
+        assert geom.is_valid()

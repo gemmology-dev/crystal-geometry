@@ -1,0 +1,57 @@
+# Codecov configuration
+# https://docs.codecov.io/docs/codecov-yaml
+
+coverage:
+  # Overall project coverage settings
+  # Target: 80%, Current: ~62% (incrementally increasing)
+  status:
+    project:
+      default:
+        target: 60%        # Current threshold (goal: 80%)
+        threshold: 2%      # Allow 2% drop without failing
+        if_ci_failed: error
+    patch:
+      default:
+        target: 70%        # New code should have higher coverage
+        threshold: 5%      # Allow 5% tolerance for patches
+
+  # Precision of coverage percentage
+  precision: 2
+  round: down
+  range: "70...100"
+
+# Parser settings
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
+
+# Comment settings for PRs
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+# Ignore patterns
+ignore:
+  - "tests/**/*"
+  - "benchmarks/**/*"
+  - "docs/**/*"
+  - "**/__pycache__/**"
+  - "**/conftest.py"
+
+# Flag management for different test types
+flags:
+  native:
+    paths:
+      - src/
+    carryforward: true
+  python-fallback:
+    paths:
+      - src/
+    carryforward: true

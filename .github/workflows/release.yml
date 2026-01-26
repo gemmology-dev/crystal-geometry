@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_release:
+        description: 'Force a release even without conventional commits'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # Generate release notes draft using Release Drafter
+  release-drafter:
+    name: Draft Release Notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Semantic versioning check (validates commit messages)
+  check-commits:
+    name: Check Commit Messages
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      next_version: ${{ steps.check.outputs.next_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install python-semantic-release
+        run: pip install python-semantic-release
+
+      - name: Check for release
+        id: check
+        run: |
+          # Check if there are commits that would trigger a release
+          if semantic-release version --print 2>/dev/null; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "next_version=$(semantic-release version --print)" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "next_version=" >> $GITHUB_OUTPUT
+          fi
+
+  # Create changelog entry for PRs
+  changelog:
+    name: Update Changelog
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install python-semantic-release
+
+      - name: Generate changelog
+        run: |
+          semantic-release changelog --unreleased > CHANGELOG_UNRELEASED.md || true
+          if [ -s CHANGELOG_UNRELEASED.md ]; then
+            echo "## Unreleased Changes" >> $GITHUB_STEP_SUMMARY
+            cat CHANGELOG_UNRELEASED.md >> $GITHUB_STEP_SUMMARY
+          fi
