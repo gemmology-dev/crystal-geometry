@@ -111,6 +111,7 @@ def _generate_group(generators: list[np.ndarray], max_elements: int = 200) -> li
 
 # Cache for point group operations
 _POINT_GROUP_CACHE: dict[str, list[np.ndarray]] = {}
+_POINT_GROUP_ARRAY_CACHE: dict[str, np.ndarray] = {}  # Stacked (N,3,3) arrays
 
 
 def get_point_group_operations(point_group: str) -> list[np.ndarray]:
@@ -265,21 +266,22 @@ def generate_equivalent_faces(
     Returns:
         List of unique (h, k, l) tuples for equivalent faces
     """
-    operations = get_point_group_operations(point_group)
-    miller = np.array([h, k, l])
+    # Get cached stacked operations array, or build and cache it
+    if point_group not in _POINT_GROUP_ARRAY_CACHE:
+        operations = get_point_group_operations(point_group)
+        _POINT_GROUP_ARRAY_CACHE[point_group] = np.array(operations)  # Shape: (N, 3, 3)
 
-    equivalent: set[tuple[int, int, int]] = set()
+    operations_arr = _POINT_GROUP_ARRAY_CACHE[point_group]
+    miller = np.array([h, k, l], dtype=np.float64)
 
-    for op in operations:
-        # Apply operation to Miller index
-        new_miller = op @ miller
+    # Vectorized: apply all operations at once
+    all_millers = operations_arr @ miller  # Shape: (N, 3)
 
-        # Round to integers
-        new_h = int(round(new_miller[0]))
-        new_k = int(round(new_miller[1]))
-        new_l = int(round(new_miller[2]))
+    # Vectorized rounding to integers
+    rounded = np.rint(all_millers).astype(np.int32)
 
-        equivalent.add((new_h, new_k, new_l))
+    # Convert to set of tuples for uniqueness
+    equivalent = {tuple(m) for m in rounded}
 
     return list(equivalent)
 
