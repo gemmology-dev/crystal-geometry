@@ -554,7 +554,9 @@ def _generate_twinned_geometry(
             vertex_offset += len(comp_verts)
 
         # Concatenate all component vertices
-        all_vertices = np.vstack(all_vertices_list) if all_vertices_list else np.array([]).reshape(0, 3)
+        all_vertices = (
+            np.vstack(all_vertices_list) if all_vertices_list else np.array([]).reshape(0, 3)
+        )
 
     # Create twin metadata
     twin_metadata = TwinMetadata(
