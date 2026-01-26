@@ -34,12 +34,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # macOS Homebrew support (ARM64 uses /opt/homebrew, Intel uses /usr/local)
 if(APPLE)
+    message(STATUS "Detected Apple platform")
     if(EXISTS "/opt/homebrew")
+        message(STATUS "Adding /opt/homebrew to CMAKE_PREFIX_PATH")
         list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew")
     endif()
     if(EXISTS "/usr/local/Homebrew")
+        message(STATUS "Adding /usr/local to CMAKE_PREFIX_PATH")
         list(APPEND CMAKE_PREFIX_PATH "/usr/local")
     endif()
+    message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 endif()
 
 # Default to Release build
