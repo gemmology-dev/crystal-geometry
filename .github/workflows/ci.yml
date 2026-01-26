@@ -174,8 +174,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
-          # Install dev dependencies first, then package (without native module for speed)
-          pip install numpy scipy pytest pytest-cov
+          # Install build deps and dev dependencies first, then package
+          pip install scikit-build-core pybind11 numpy scipy pytest pytest-cov
           pip install -e . --no-build-isolation
         env:
           CMAKE_ARGS: "-DSKIP_BUILD=ON"
