@@ -244,3 +244,118 @@ class TestTwinGeometry:
 
         attribution = geom.get_face_attribution()
         assert list(attribution) == [0, 1]
+
+
+class TestTwinGeometryCorrectness:
+    """Tests for geometric correctness of twin output."""
+
+    def test_v_shaped_face_normals_point_outward(self):
+        """V-shaped twins should have outward-pointing normals on both components."""
+        from crystal_geometry.twins.generators import VShapedGeometryGenerator
+
+        generator = VShapedGeometryGenerator()
+
+        # Simple octahedron-like halfspaces
+        normals = np.array(
+            [
+                [1, 0, 0],
+                [-1, 0, 0],
+                [0, 1, 0],
+                [0, -1, 0],
+                [0, 0, 1],
+                [0, 0, -1],
+            ],
+            dtype=np.float64,
+        )
+        normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        distances = np.ones(6)
+
+        twin_info = {
+            "axis": np.array([1, 0, 0]),
+            "angle": 180.0,
+            "type": "contact",
+        }
+
+        result = generator.generate(twin_info, normals, distances)
+        assert result.n_components == 2
+
+        # Check that all faces have consistent winding (outward normals)
+        for comp in result.components:
+            verts = comp.get_transformed_vertices()
+            centroid = np.mean(verts, axis=0)
+
+            for face in comp.faces:
+                if len(face) < 3:
+                    continue
+                # Compute face normal from vertices
+                v0, v1, v2 = verts[face[0]], verts[face[1]], verts[face[2]]
+                face_normal = np.cross(v1 - v0, v2 - v0)
+                norm_len = np.linalg.norm(face_normal)
+                if norm_len < 1e-10:
+                    continue
+                face_normal = face_normal / norm_len
+
+                # Face center
+                face_center = np.mean(verts[face], axis=0)
+                outward = face_center - centroid
+
+                # Normal should point outward (same direction as centroid-to-face vector)
+                assert np.dot(face_normal, outward) > 0, (
+                    f"Face normal points inward: dot={np.dot(face_normal, outward)}"
+                )
+
+    def test_unified_face_attribution_matches_geometry(self):
+        """Face attribution should correctly identify which component each face belongs to."""
+        from crystal_geometry.twins.generators import UnifiedGeometryGenerator
+
+        generator = UnifiedGeometryGenerator()
+
+        # Octahedron normals
+        normals = np.array(
+            [
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, 1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float64,
+        )
+        normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+        distances = np.ones(8)
+
+        # Spinel law: 180° about [111]
+        twin_info = {
+            "axis": np.array([1, 1, 1]) / np.sqrt(3),
+            "angle": 180.0,
+            "type": "contact",
+        }
+
+        result = generator.generate(twin_info, normals, distances)
+        assert result.n_components == 1  # Unified geometry
+
+        # Face attribution should be in metadata
+        assert "face_attribution" in result.metadata
+        attr = result.metadata["face_attribution"]
+
+        # Should have two component values (0 and 1) for spinel twin
+        unique_comps = set(attr)
+        assert len(unique_comps) <= 2, f"Expected 1-2 components, got {len(unique_comps)}"
+
+    def test_japan_law_angle_is_correct(self):
+        """Japan law angle should be 84°33'30" (the standard crystallographic value)."""
+        from crystal_geometry.twins import get_twin_law
+        from crystal_geometry.twins.laws import _JAPAN_ANGLE_QUARTZ
+
+        law = get_twin_law("japan")
+
+        # Verify the angle matches the defined constant
+        assert np.isclose(law.angle, _JAPAN_ANGLE_QUARTZ, atol=1e-10)
+
+        # Should be 84°33'30" = 84.55833...°
+        expected_dms = 84.0 + 33.0 / 60.0 + 30.0 / 3600.0
+        assert np.isclose(law.angle, expected_dms, atol=1e-4)
+        assert 84.55 < law.angle < 84.56

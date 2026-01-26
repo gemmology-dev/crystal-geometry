@@ -10,6 +10,12 @@ import numpy as np
 
 from .transforms import DIRECTIONS
 
+# Japan twin angle: 84°33'30" = 84 + 33/60 + 30/3600 degrees
+# This is the angle between c-axes of the two quartz individuals in a Japan twin.
+# The twin plane is (11-22), and this angle is derived from the rhombohedral
+# geometry of α-quartz with lattice parameters a = 4.913 Å, c = 5.405 Å.
+_JAPAN_ANGLE_QUARTZ = 84.0 + 33.0 / 60.0 + 30.0 / 3600.0  # 84.55833...°
+
 
 @dataclass(frozen=True)
 class TwinLaw:
@@ -119,7 +125,7 @@ TWIN_LAWS: dict[str, TwinLaw] = {
         twin_type="contact",
         render_mode="v_shaped",
         axis=DIRECTIONS["[11-2]"],
-        angle=84.5583,
+        angle=_JAPAN_ANGLE_QUARTZ,
         habit="quartz_crystal",
         examples=("quartz",),
     ),

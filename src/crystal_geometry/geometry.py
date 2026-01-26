@@ -464,35 +464,93 @@ def _generate_twinned_geometry(
 
     # For unified geometry, faces are already computed
     if twin_result.render_mode == "unified" and twin_result.components:
-        component = twin_result.components[0]
-        for i, face in enumerate(component.faces):
-            if len(face) >= 3:
-                # Find face normal from original normals
-                form_idx = i % len(normals)
-                normal = normals[form_idx]
-                face_verts = compute_face_vertices(all_vertices, normal, distances[form_idx])
-                if len(face_verts) >= 3:
-                    faces.append(face_verts)
-                    face_normals_list.append(normal)
-                    final_face_forms.append(face_form_indices[form_idx])
-                    final_face_millers.append(face_millers[form_idx])
-                    comp_id = face_attribution[i] if i < len(face_attribution) else 0
-                    component_ids.append(comp_id)
-    else:
-        # For dual/v-shaped/cyclic: rebuild faces from components
-        for comp_idx, component in enumerate(twin_result.components):
-            # Get 3x3 rotation from 4x4 transform
-            R = component.transform[:3, :3]
+        from .twins import rotation_matrix_axis_angle
 
-            for i in range(len(normals)):
-                rotated_normal = R @ normals_arr[i]
-                face_verts = compute_face_vertices(all_vertices, rotated_normal, distances_arr[i])
-                if len(face_verts) >= 3:
-                    faces.append(face_verts)
-                    face_normals_list.append(rotated_normal)
-                    final_face_forms.append(face_form_indices[i])
-                    final_face_millers.append(face_millers[i])
-                    component_ids.append(comp_idx)
+        component = twin_result.components[0]
+        # Get metadata for face-to-form matching
+        meta = twin_result.metadata
+        n_components = meta.get("n_original_components", 2)
+
+        for i, face in enumerate(component.faces):
+            if len(face) < 3:
+                continue
+
+            # Compute actual face normal from vertex positions
+            face_verts_arr = all_vertices[face]
+            v0, v1, v2 = face_verts_arr[0], face_verts_arr[1], face_verts_arr[2]
+            computed_normal = np.cross(v1 - v0, v2 - v0)
+            norm_len = np.linalg.norm(computed_normal)
+            if norm_len < 1e-10:
+                continue
+            computed_normal = computed_normal / norm_len
+
+            # Match against all rotated versions of original normals
+            best_form_idx = 0
+            best_dot = -1.0
+            best_comp_id = 0
+            for comp_id in range(n_components):
+                R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_id)
+                for form_idx, orig_normal in enumerate(normals):
+                    rotated = R @ np.array(orig_normal)
+                    dot = abs(np.dot(rotated, computed_normal))
+                    if dot > best_dot:
+                        best_dot = dot
+                        best_form_idx = form_idx
+                        best_comp_id = comp_id
+
+            # Use matched values
+            faces.append(list(face))
+            face_normals_list.append(computed_normal)
+            final_face_forms.append(face_form_indices[best_form_idx])
+            final_face_millers.append(face_millers[best_form_idx])
+            component_ids.append(best_comp_id)
+    else:
+        # For dual/v-shaped/cyclic: use faces already computed by generators
+        from .twins import rotation_matrix_axis_angle
+
+        vertex_offset = 0
+        for comp_idx, component in enumerate(twin_result.components):
+            # Compute rotation for this component (generators don't store it in transform)
+            if render_mode == "v_shaped":
+                # V-shaped uses reflection, not rotation - use component's actual faces
+                R = np.eye(3)
+            else:
+                # Dual/cyclic: rotation by comp_idx * angle around twin axis
+                R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_idx)
+
+            # Use faces from the generator, match to forms
+            comp_verts = component.get_transformed_vertices()
+            for face in component.faces:
+                if len(face) < 3:
+                    continue
+                # Compute actual face normal from vertices
+                face_verts_arr = comp_verts[face]
+                v0, v1, v2 = face_verts_arr[0], face_verts_arr[1], face_verts_arr[2]
+                computed_normal = np.cross(v1 - v0, v2 - v0)
+                norm_len = np.linalg.norm(computed_normal)
+                if norm_len < 1e-10:
+                    continue
+                computed_normal = computed_normal / norm_len
+
+                # Match to original form by comparing normals
+                best_form_idx = 0
+                best_dot = -1.0
+                for form_idx, orig_normal in enumerate(normals):
+                    rotated = R @ np.array(orig_normal)
+                    dot = abs(np.dot(rotated, computed_normal))
+                    if dot > best_dot:
+                        best_dot = dot
+                        best_form_idx = form_idx
+
+                # Offset face indices for combined vertex array
+                offset_face = [idx + vertex_offset for idx in face]
+                faces.append(offset_face)
+                face_normals_list.append(computed_normal)
+                final_face_forms.append(face_form_indices[best_form_idx])
+                final_face_millers.append(face_millers[best_form_idx])
+                component_ids.append(comp_idx)
+
+            vertex_offset += len(component.vertices)
 
     # Create twin metadata
     twin_metadata = TwinMetadata(

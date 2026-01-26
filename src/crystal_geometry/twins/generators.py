@@ -7,6 +7,12 @@ Provides 5 generator classes for different twin rendering strategies:
 - VShapedGeometryGenerator: V-shaped contact twins
 - CyclicGeometryGenerator: Cyclic twins with n-fold symmetry
 - SingleCrystalGeometryGenerator: Internal twins (no external change)
+
+Face Winding Convention:
+- All faces use counter-clockwise vertex ordering when viewed from outside
+- Face normals point outward (right-hand rule: CCW vertices → outward normal)
+- When reflecting geometry across a plane, face vertex order must be reversed
+  to maintain correct outward-facing normals
 """
 
 from abc import ABC, abstractmethod
@@ -170,14 +176,22 @@ def _compute_halfspace_intersection(normals: np.ndarray, distances: np.ndarray) 
     b_ub = distances
     bounds = [(-10.0, 10.0), (-10.0, 10.0), (-10.0, 10.0), (1e-10, None)]
 
+    interior_point = None
     try:
         result = linprog(c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method="highs")
         if result.success and result.x[3] > 1e-10:
             interior_point = result.x[:3]
-        else:
-            interior_point = np.array([0.0, 0.0, 0.0])
     except Exception:
-        interior_point = np.array([0.0, 0.0, 0.0])
+        pass
+
+    # Fallback: use centroid from direct vertex enumeration
+    if interior_point is None:
+        fallback_verts = _compute_vertices_direct(normals, distances)
+        if len(fallback_verts) > 0:
+            interior_point = np.mean(fallback_verts, axis=0)
+        else:
+            # Last resort: origin (may fail, but we'll catch it)
+            interior_point = np.array([0.0, 0.0, 0.0])
 
     # Build halfspace matrix for scipy
     halfspaces = np.hstack([normals, -distances.reshape(-1, 1)])
@@ -329,23 +343,20 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
         else:
             n_components = 2
 
-        # Collect all halfspaces from all rotated orientations
-        all_normals_list: list[np.ndarray] = []
-        all_distances_list: list[float] = []
-        face_attribution: list[int] = []
+        # Collect all halfspaces from all rotated orientations (pre-allocated)
+        n_base = len(normals)
+        n_halfspaces = n_components * n_base
+        all_normals = np.empty((n_halfspaces, 3), dtype=np.float64)
+        all_distances = np.empty(n_halfspaces, dtype=np.float64)
 
+        idx = 0
         for comp_id in range(n_components):
-            angle = twin_angle * comp_id
-            R = rotation_matrix_axis_angle(twin_axis, angle)
-
-            for normal, dist in zip(normals, distances, strict=False):
-                rotated_normal = R @ normal
-                all_normals_list.append(rotated_normal)
-                all_distances_list.append(dist)
-                face_attribution.append(comp_id)
-
-        all_normals = np.array(all_normals_list)
-        all_distances = np.array(all_distances_list)
+            R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_id)
+            # Vectorized rotation of all normals at once
+            rotated = (R @ normals.T).T
+            all_normals[idx : idx + n_base] = rotated
+            all_distances[idx : idx + n_base] = distances
+            idx += n_base
 
         # Compute unified intersection
         vertices = _compute_halfspace_intersection(all_normals, all_distances)
@@ -356,13 +367,34 @@ class UnifiedGeometryGenerator(TwinGeometryGenerator):
         # Compute faces
         faces = _compute_face_vertices(vertices, all_normals, all_distances)
 
-        # Build face attribution for the actual faces computed
+        # Build face attribution by matching each face to its source halfspace
+        # (faces may skip some halfspaces, so we match by geometric proximity)
+        n_base = len(normals)
         final_attribution = []
-        for face_idx, _ in enumerate(faces):
-            if face_idx < len(face_attribution):
-                final_attribution.append(face_attribution[face_idx])
-            else:
+        for face in faces:
+            if len(face) < 3:
                 final_attribution.append(0)
+                continue
+
+            # Compute face centroid
+            face_verts = vertices[face]
+            centroid = np.mean(face_verts, axis=0)
+
+            # Find which halfspace this face lies on (centroid should be on the plane)
+            best_hs_idx = 0
+            best_dist = float("inf")
+            for hs_idx, (hs_normal, hs_dist) in enumerate(
+                zip(all_normals, all_distances, strict=False)
+            ):
+                # Distance from centroid to plane
+                plane_dist = abs(np.dot(centroid, hs_normal) - hs_dist)
+                if plane_dist < best_dist:
+                    best_dist = plane_dist
+                    best_hs_idx = hs_idx
+
+            # Component ID is which rotation group this halfspace belongs to
+            comp_id = best_hs_idx // n_base
+            final_attribution.append(comp_id)
 
         component = CrystalComponent(
             vertices=vertices, faces=faces, transform=np.eye(4), component_id=0
@@ -467,7 +499,8 @@ class VShapedGeometryGenerator(TwinGeometryGenerator):
         # Crystal 2: Reflection of crystal 1 across composition plane
         # v' = v - 2*(v·n)*n
         verts2 = verts1 - 2 * np.outer(verts1 @ twin_axis, twin_axis)
-        faces2 = [list(face) for face in faces1]
+        # Reverse face winding to maintain outward normals after reflection
+        faces2 = [list(reversed(face)) for face in faces1]
 
         component1 = CrystalComponent(
             vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
@@ -514,28 +547,43 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
         n_components = int(round(360.0 / twin_angle))
 
         if self.use_unified:
-            # Use unified approach (halfspace intersection)
-            all_normals_list: list[np.ndarray] = []
-            all_distances_list: list[float] = []
-            face_attribution: list[int] = []
+            # Use unified approach (halfspace intersection) with pre-allocated arrays
+            n_base = len(normals)
+            n_halfspaces = n_components * n_base
+            all_normals = np.empty((n_halfspaces, 3), dtype=np.float64)
+            all_distances = np.empty(n_halfspaces, dtype=np.float64)
 
+            idx = 0
             for comp_id in range(n_components):
-                angle = twin_angle * comp_id
-                R = rotation_matrix_axis_angle(twin_axis, angle)
-
-                for normal, dist in zip(normals, distances, strict=False):
-                    rotated_normal = R @ normal
-                    all_normals_list.append(rotated_normal)
-                    all_distances_list.append(dist)
-                    face_attribution.append(comp_id)
-
-            all_normals = np.array(all_normals_list)
-            all_distances = np.array(all_distances_list)
+                R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_id)
+                rotated = (R @ normals.T).T
+                all_normals[idx : idx + n_base] = rotated
+                all_distances[idx : idx + n_base] = distances
+                idx += n_base
 
             vertices = _compute_halfspace_intersection(all_normals, all_distances)
             if len(vertices) < 4:
                 raise ValueError("Failed to compute cyclic twin geometry")
             faces = _compute_face_vertices(vertices, all_normals, all_distances)
+
+            # Build face attribution by matching faces to source halfspaces
+            final_attribution = []
+            for face in faces:
+                if len(face) < 3:
+                    final_attribution.append(0)
+                    continue
+                face_verts = vertices[face]
+                centroid = np.mean(face_verts, axis=0)
+                best_hs_idx = 0
+                best_dist = float("inf")
+                for hs_idx, (hs_normal, hs_dist) in enumerate(
+                    zip(all_normals, all_distances, strict=False)
+                ):
+                    plane_dist = abs(np.dot(centroid, hs_normal) - hs_dist)
+                    if plane_dist < best_dist:
+                        best_dist = plane_dist
+                        best_hs_idx = hs_idx
+                final_attribution.append(best_hs_idx // n_base)
 
             component = CrystalComponent(
                 vertices=vertices, faces=faces, transform=np.eye(4), component_id=0
@@ -546,7 +594,7 @@ class CyclicGeometryGenerator(TwinGeometryGenerator):
                 render_mode="unified",
                 metadata={
                     "blend_mode": "cyclic",
-                    "face_attribution": np.array(face_attribution[: len(faces)], dtype=np.int32),
+                    "face_attribution": np.array(final_attribution, dtype=np.int32),
                     "n_fold": n_components,
                     "twin_axis": twin_axis,
                     "twin_angle": twin_angle,
