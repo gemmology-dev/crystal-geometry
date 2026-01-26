@@ -94,8 +94,8 @@ jobs:
   # Publish to PyPI
   publish:
     name: Publish to PyPI
-    needs: [build-wheels, build-sdist, build-pure-python]
-    if: always() && needs.build-sdist.result == 'success' && needs.build-pure-python.result == 'success'
+    needs: [build-wheels, build-sdist]
+    if: always() && needs.build-sdist.result == 'success'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -129,40 +129,5 @@ jobs:
         run: |
           gh release upload ${{ github.event.release.tag_name }} dist/* --clobber
 
-  # Build pure-Python fallback wheel (for platforms without native support)
-  build-pure-python:
-    name: Build pure Python wheel
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install build tools
-        run: pip install build
-
-      - name: Build pure Python wheel
-        run: python -m build --wheel
-        env:
-          # Skip native build
-          SKIP_NATIVE_BUILD: "1"
-          CMAKE_ARGS: "-DSKIP_BUILD=ON"
-
-      - name: Rename to indicate pure Python
-        run: |
-          cd dist
-          for f in *.whl; do
-            # Only rename if it's a platform-specific wheel
-            if [[ "$f" != *"py3-none-any"* ]]; then
-              echo "Note: Pure Python wheel built as: $f"
-            fi
-          done
-
-      - name: Upload pure Python wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-pure-python
-          path: dist/*.whl
+  # Note: Pure Python fallback removed - scikit-build-core always builds native
+  # Users on unsupported platforms can install from source dist
