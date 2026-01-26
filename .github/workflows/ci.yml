@@ -43,17 +43,7 @@ jobs:
 
       - name: Install Eigen (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          brew install eigen
-          echo "=== Eigen installation ==="
-          EIGEN_PREFIX=$(brew --prefix eigen)
-          echo "Eigen prefix: $EIGEN_PREFIX"
-          echo "=== Share directory ==="
-          ls -laR $EIGEN_PREFIX/share/ || true
-          echo "=== Looking for cmake files ==="
-          find $EIGEN_PREFIX -name "*.cmake" 2>/dev/null || true
-          echo "=== Looking for Eigen3Config ==="
-          find /opt/homebrew -name "Eigen3Config*" 2>/dev/null | head -5 || true
+        run: brew install eigen
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -65,9 +55,6 @@ jobs:
         run: |
           pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
           pip install -e ".[dev]" -v
-        env:
-          # On macOS, tell CMake where to find Eigen (installed via Homebrew)
-          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DEigen3_DIR=/opt/homebrew/opt/eigen/share/eigen3/cmake' || '' }}
 
       - name: Verify native module loaded
         run: |
