@@ -174,7 +174,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
-          pip install -e ".[dev]" --no-build-isolation || pip install numpy scipy pytest pytest-cov
+          # Install dev dependencies first, then package (without native module for speed)
+          pip install numpy scipy pytest pytest-cov
+          pip install -e . --no-build-isolation
+        env:
+          CMAKE_ARGS: "-DSKIP_BUILD=ON"
 
       - name: Run tests with coverage
         # Target: 80%, Current threshold: 60% (incrementally increasing)

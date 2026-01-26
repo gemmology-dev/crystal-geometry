@@ -33,25 +33,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # macOS Homebrew support - set Eigen3_DIR directly for reliable detection
-if(APPLE)
-    message(STATUS "Detected Apple platform, looking for Homebrew Eigen3")
+# Homebrew's Eigen cmake config isn't in CMAKE_PREFIX_PATH by default
+if(APPLE AND NOT Eigen3_DIR)
     # Homebrew ARM64 (Apple Silicon)
-    set(_EIGEN_ARM64 "/opt/homebrew/opt/eigen/share/eigen3/cmake")
+    if(EXISTS "/opt/homebrew/opt/eigen/share/eigen3/cmake/Eigen3Config.cmake")
+        set(Eigen3_DIR "/opt/homebrew/opt/eigen/share/eigen3/cmake")
     # Homebrew Intel
-    set(_EIGEN_INTEL "/usr/local/opt/eigen/share/eigen3/cmake")
-
-    if(EXISTS "${_EIGEN_ARM64}/Eigen3Config.cmake")
-        set(Eigen3_DIR "${_EIGEN_ARM64}")
-        message(STATUS "Set Eigen3_DIR to ${Eigen3_DIR}")
-    elseif(EXISTS "${_EIGEN_INTEL}/Eigen3Config.cmake")
-        set(Eigen3_DIR "${_EIGEN_INTEL}")
-        message(STATUS "Set Eigen3_DIR to ${Eigen3_DIR}")
-    endif()
-
-    # Debug: check the actual version in the config
-    if(Eigen3_DIR AND EXISTS "${Eigen3_DIR}/Eigen3ConfigVersion.cmake")
-        include("${Eigen3_DIR}/Eigen3ConfigVersion.cmake")
-        message(STATUS "Eigen3 package version from config: ${PACKAGE_VERSION}")
+    elseif(EXISTS "/usr/local/opt/eigen/share/eigen3/cmake/Eigen3Config.cmake")
+        set(Eigen3_DIR "/usr/local/opt/eigen/share/eigen3/cmake")
     endif()
 endif()
 
