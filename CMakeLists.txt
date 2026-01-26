@@ -68,9 +68,9 @@ if(NOT pybind11_FOUND)
     return()
 endif()
 
-# Note: Homebrew's Eigen 5.x is API-compatible with 3.x
-# Just require minimum version and let CMake's AnyNewerVersion handle compatibility
-find_package(Eigen3 3.3 QUIET CONFIG)
+# Note: No version requirement - Homebrew's Eigen 5.x uses SameMajorVersion which
+# rejects the 3.3 requirement. Both Eigen 3.x and 5.x are compatible with our code.
+find_package(Eigen3 QUIET CONFIG)
 if(NOT Eigen3_FOUND)
     message(WARNING "Eigen3 not found - native module will not be built")
     message(STATUS "Install Eigen3:")

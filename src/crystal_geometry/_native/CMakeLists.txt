@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 3.15)
 # Find pybind11
 find_package(pybind11 CONFIG REQUIRED)
 
-# Find Eigen3 (minimum 3.3, Homebrew's 5.x is compatible)
-find_package(Eigen3 3.3 REQUIRED CONFIG)
+# Find Eigen3 (no version requirement - both 3.x and 5.x are compatible)
+find_package(Eigen3 REQUIRED CONFIG)
 
 # Option for OpenMP
 option(USE_OPENMP "Enable OpenMP for parallel computation" OFF)
