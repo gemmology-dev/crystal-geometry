@@ -448,10 +448,6 @@ def _generate_twinned_geometry(
         distances=distances_arr,
     )
 
-    # Get vertices and faces from twin result
-    all_vertices = twin_result.get_all_vertices()
-    all_vertices = _deduplicate_vertices(all_vertices)
-
     # Build face data
     faces = []
     face_normals_list = []
@@ -459,11 +455,14 @@ def _generate_twinned_geometry(
     final_face_millers = []
     component_ids = []
 
-    # For unified geometry, faces are already computed
+    # For unified geometry, faces are already computed with correct vertex indices
     if twin_result.render_mode == "unified" and twin_result.components:
         from .twins import rotation_matrix_axis_angle
 
         component = twin_result.components[0]
+        # Unified twins have a single vertex set - safe to deduplicate
+        all_vertices = _deduplicate_vertices(component.get_transformed_vertices())
+
         # Get metadata for face-to-form matching
         meta = twin_result.metadata
         n_components = meta.get("n_original_components", 2)
@@ -502,21 +501,26 @@ def _generate_twinned_geometry(
             final_face_millers.append(face_millers[best_form_idx])
             component_ids.append(best_comp_id)
     else:
-        # For dual/v-shaped/cyclic: use faces already computed by generators
+        # For dual/v-shaped/cyclic: concatenate component vertices without deduplication
+        # (components are separate polyhedra that may overlap but don't share vertices)
         from .twins import rotation_matrix_axis_angle
 
+        all_vertices_list = []
         vertex_offset = 0
+
         for comp_idx, component in enumerate(twin_result.components):
+            comp_verts = component.get_transformed_vertices()
+            all_vertices_list.append(comp_verts)
+
             # Compute rotation for this component (generators don't store it in transform)
             if render_mode == "v_shaped":
-                # V-shaped uses reflection, not rotation - use component's actual faces
+                # V-shaped uses reflection, not rotation
                 R = np.eye(3)
             else:
                 # Dual/cyclic: rotation by comp_idx * angle around twin axis
                 R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_idx)
 
             # Use faces from the generator, match to forms
-            comp_verts = component.get_transformed_vertices()
             for face in component.faces:
                 if len(face) < 3:
                     continue
@@ -547,7 +551,10 @@ def _generate_twinned_geometry(
                 final_face_millers.append(face_millers[best_form_idx])
                 component_ids.append(comp_idx)
 
-            vertex_offset += len(component.vertices)
+            vertex_offset += len(comp_verts)
+
+        # Concatenate all component vertices
+        all_vertices = np.vstack(all_vertices_list) if all_vertices_list else np.array([]).reshape(0, 3)
 
     # Create twin metadata
     twin_metadata = TwinMetadata(
