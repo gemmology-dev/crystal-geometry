@@ -57,7 +57,8 @@ jobs:
           pip install -e ".[dev]" -v
         env:
           # On macOS, tell CMake where to find Eigen (installed via Homebrew)
-          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DCMAKE_PREFIX_PATH=/opt/homebrew' || '' }}
+          # Use Eigen3_ROOT to avoid overwriting CMAKE_PREFIX_PATH (which breaks pybind11 discovery)
+          CMAKE_ARGS: ${{ matrix.os == 'macos-latest' && '-DEigen3_ROOT=/opt/homebrew' || '' }}
 
       - name: Verify native module loaded
         run: |
