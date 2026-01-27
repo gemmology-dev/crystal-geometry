@@ -467,14 +467,17 @@ class DualCrystalGeometryGenerator(TwinGeometryGenerator):
 
 
 class VShapedGeometryGenerator(TwinGeometryGenerator):
-    """V-shaped contact twins using reflection across composition plane.
+    """V-shaped contact twins where two crystals meet at a composition plane.
 
     Required for contact twins forming V or re-entrant shapes:
     - Japan law quartz (84.5° V)
-    - Gypsum swallow-tail
+    - Gypsum swallow-tail (180° = reflection)
 
-    The two crystal halves share an edge at the composition plane,
-    creating a characteristic V or heart shape.
+    For 180° twins (gypsum): reflection across composition plane
+    For non-180° twins (Japan): both crystals built from same normals,
+        Crystal 2 stores its rotation in the transform matrix. This allows
+        modifications (elongation) to be applied BEFORE the rotation, ensuring
+        both crystals have identical morphology.
     """
 
     def generate(
@@ -487,28 +490,70 @@ class VShapedGeometryGenerator(TwinGeometryGenerator):
         # Composition plane passes through origin
         composition_offset = 0.0
 
-        # Crystal 1: Clip full crystal at composition plane (keep positive side)
-        all_normals1 = np.vstack([normals, -twin_axis.reshape(1, 3)])
-        all_distances1 = np.append(distances, -composition_offset)
+        # Determine transform type based on twin angle
+        use_reflection = abs(twin_angle - 180.0) < 1e-6
 
-        verts1 = _compute_halfspace_intersection(all_normals1, all_distances1)
-        if len(verts1) < 4:
-            raise ValueError("Failed to compute V-shaped crystal 1 geometry")
-        faces1 = _compute_face_vertices(verts1, all_normals1, all_distances1)
+        if use_reflection:
+            # For 180° twins (gypsum swallow-tail): clip and reflect
+            # Crystal 1: Clip full crystal at composition plane (keep positive side)
+            all_normals1 = np.vstack([normals, -twin_axis.reshape(1, 3)])
+            all_distances1 = np.append(distances, -composition_offset)
 
-        # Crystal 2: Reflection of crystal 1 across composition plane
-        # v' = v - 2*(v·n)*n
-        verts2 = verts1 - 2 * np.outer(verts1 @ twin_axis, twin_axis)
-        # Reverse face winding to maintain outward normals after reflection
-        faces2 = [list(reversed(face)) for face in faces1]
+            verts1 = _compute_halfspace_intersection(all_normals1, all_distances1)
+            if len(verts1) < 4:
+                raise ValueError("Failed to compute V-shaped crystal 1 geometry")
+            faces1 = _compute_face_vertices(verts1, all_normals1, all_distances1)
 
-        component1 = CrystalComponent(
-            vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
-        )
+            # v' = v - 2*(v·n)*n
+            verts2 = verts1 - 2 * np.outer(verts1 @ twin_axis, twin_axis)
+            # Reverse face winding to maintain outward normals after reflection
+            faces2 = [list(reversed(face)) for face in faces1]
+            transform_type = "reflection"
 
-        component2 = CrystalComponent(
-            vertices=verts2, faces=faces2, transform=np.eye(4), component_id=1
-        )
+            component1 = CrystalComponent(
+                vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
+            )
+            component2 = CrystalComponent(
+                vertices=verts2, faces=faces2, transform=np.eye(4), component_id=1
+            )
+        else:
+            # For non-180° twins (Japan Law): both crystals have same base morphology
+            # Build both from SAME normals, store rotation in transform
+            # Modifications will be applied before transform
+
+            # Crystal 1: Clip at composition plane (keep positive side)
+            clip_normal1 = -twin_axis
+            all_normals1 = np.vstack([normals, clip_normal1.reshape(1, 3)])
+            all_distances1 = np.append(distances, -composition_offset)
+
+            verts1 = _compute_halfspace_intersection(all_normals1, all_distances1)
+            if len(verts1) < 4:
+                raise ValueError("Failed to compute V-shaped crystal 1 geometry")
+            faces1 = _compute_face_vertices(verts1, all_normals1, all_distances1)
+
+            # Crystal 2: Build from same normals, clip opposite side
+            clip_normal2 = twin_axis  # Keep negative side of composition plane
+            all_normals2 = np.vstack([normals, clip_normal2.reshape(1, 3)])
+            all_distances2 = np.append(distances, -composition_offset)
+
+            verts2 = _compute_halfspace_intersection(all_normals2, all_distances2)
+            if len(verts2) < 4:
+                raise ValueError("Failed to compute V-shaped crystal 2 geometry")
+            faces2 = _compute_face_vertices(verts2, all_normals2, all_distances2)
+
+            # Build rotation transform for Crystal 2
+            R = rotation_matrix_axis_angle(twin_axis, twin_angle)
+            transform2 = np.eye(4)
+            transform2[:3, :3] = R
+
+            transform_type = "deferred_rotation"
+
+            component1 = CrystalComponent(
+                vertices=verts1, faces=faces1, transform=np.eye(4), component_id=0
+            )
+            component2 = CrystalComponent(
+                vertices=verts2, faces=faces2, transform=transform2, component_id=1
+            )
 
         return TwinGeometry(
             components=[component1, component2],
@@ -518,7 +563,8 @@ class VShapedGeometryGenerator(TwinGeometryGenerator):
                 "composition_plane": {"normal": twin_axis, "offset": composition_offset},
                 "twin_axis": twin_axis,
                 "twin_angle": twin_angle,
-                "transform": "reflection",
+                "transform": transform_type,
+                "apply_modifications_before_transform": transform_type == "deferred_rotation",
             },
         )
 

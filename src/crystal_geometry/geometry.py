@@ -391,6 +391,7 @@ def _generate_twinned_geometry(
     distances: list[float],
     face_form_indices: list[int],
     face_millers: list[tuple[int, int, int]],
+    modifications: list[Any] | None = None,
 ) -> CrystalGeometry:
     """Generate twinned crystal geometry.
 
@@ -400,6 +401,7 @@ def _generate_twinned_geometry(
         distances: Base halfspace distances
         face_form_indices: Form indices
         face_millers: Miller indices
+        modifications: Optional list of modifications to apply (for deferred transforms)
 
     Returns:
         CrystalGeometry with twin metadata
@@ -505,17 +507,45 @@ def _generate_twinned_geometry(
         # (components are separate polyhedra that may overlap but don't share vertices)
         from .twins import rotation_matrix_axis_angle
 
+        # Check if we need to apply modifications before transform (Japan Law, etc.)
+        apply_mods_before_transform = twin_result.metadata.get(
+            "apply_modifications_before_transform", False
+        )
+
         all_vertices_list = []
         vertex_offset = 0
 
         for comp_idx, component in enumerate(twin_result.components):
-            comp_verts = component.get_transformed_vertices()
+            if apply_mods_before_transform and modifications:
+                # For deferred-transform twins: apply modifications BEFORE transform
+                # This ensures elongation affects both crystals equally
+                from .modifications import apply_modifications as apply_mods
+
+                raw_verts = component.vertices
+                modified_verts = apply_mods(raw_verts, modifications)
+
+                # Now apply transform to modified vertices
+                if np.allclose(component.transform, np.eye(4)):
+                    comp_verts = modified_verts
+                else:
+                    n_verts = len(modified_verts)
+                    homogeneous = np.hstack([modified_verts, np.ones((n_verts, 1))])
+                    transformed = homogeneous @ component.transform.T
+                    comp_verts = transformed[:, :3]
+            else:
+                # Standard: transform already applied or no deferred transform
+                comp_verts = component.get_transformed_vertices()
+
             all_vertices_list.append(comp_verts)
 
-            # Compute rotation for this component (generators don't store it in transform)
+            # Compute rotation for this component (for form matching)
             if render_mode == "v_shaped":
-                # V-shaped uses reflection, not rotation
-                R = np.eye(3)
+                # V-shaped: check if deferred transform used rotation
+                if apply_mods_before_transform and comp_idx == 1:
+                    # Component 1 was rotated by twin_angle
+                    R = rotation_matrix_axis_angle(twin_axis, twin_angle)
+                else:
+                    R = np.eye(3)
             else:
                 # Dual/cyclic: rotation by comp_idx * angle around twin axis
                 R = rotation_matrix_axis_angle(twin_axis, twin_angle * comp_idx)
@@ -596,31 +626,61 @@ def cdl_to_geometry(desc: CrystalDescription, c_ratio: float = 1.0) -> CrystalGe
     normals, distances, face_form_indices, face_millers = _build_halfspaces(desc, lattice)
 
     # Generate geometry (twinned or base)
+    # For twins with deferred transforms (Japan Law), pass modifications
+    # so they can be applied before the transform
     if desc.twin is not None:
         geometry = _generate_twinned_geometry(
-            desc, normals, distances, face_form_indices, face_millers
+            desc, normals, distances, face_form_indices, face_millers,
+            modifications=desc.modifications,
         )
+        # Modifications were applied inside for deferred-transform twins
+        # For others, apply here
+        if desc.modifications and not _uses_deferred_transform(desc):
+            from .modifications import apply_modifications
+
+            geometry = CrystalGeometry(
+                vertices=apply_modifications(geometry.vertices, desc.modifications),
+                faces=geometry.faces,
+                face_normals=geometry.face_normals,
+                face_forms=geometry.face_forms,
+                face_millers=geometry.face_millers,
+                forms=geometry.forms,
+                component_ids=geometry.component_ids,
+                twin_metadata=geometry.twin_metadata,
+            )
     else:
         geometry = _generate_base_geometry(
             normals, distances, face_form_indices, face_millers, desc.forms
         )
+        # Apply modifications if present
+        if desc.modifications:
+            from .modifications import apply_modifications
 
-    # Apply modifications if present
-    if desc.modifications:
-        from .modifications import apply_modifications
-
-        geometry = CrystalGeometry(
-            vertices=apply_modifications(geometry.vertices, desc.modifications),
-            faces=geometry.faces,
-            face_normals=geometry.face_normals,
-            face_forms=geometry.face_forms,
-            face_millers=geometry.face_millers,
-            forms=geometry.forms,
-            component_ids=geometry.component_ids,
-            twin_metadata=geometry.twin_metadata,
-        )
+            geometry = CrystalGeometry(
+                vertices=apply_modifications(geometry.vertices, desc.modifications),
+                faces=geometry.faces,
+                face_normals=geometry.face_normals,
+                face_forms=geometry.face_forms,
+                face_millers=geometry.face_millers,
+                forms=geometry.forms,
+                component_ids=geometry.component_ids,
+                twin_metadata=geometry.twin_metadata,
+            )
 
     return geometry
+
+
+def _uses_deferred_transform(desc: CrystalDescription) -> bool:
+    """Check if twin uses deferred transform (modifications applied per-component).
+
+    Japan Law twins store rotation in component transforms so elongation
+    can be applied before rotation, ensuring both crystals have identical
+    morphology.
+    """
+    if desc.twin is None or not desc.twin.law:
+        return False
+    # Japan Law twin uses deferred transform
+    return desc.twin.law.lower() == "japan"
 
 
 def cdl_string_to_geometry(cdl: str, c_ratio: float = 1.0) -> CrystalGeometry:
