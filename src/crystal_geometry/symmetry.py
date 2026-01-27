@@ -253,6 +253,107 @@ def miller_to_normal(
     return np.array([0, 0, 1])
 
 
+def _is_hexagonal_trigonal(point_group: str) -> bool:
+    """Check if point group is hexagonal or trigonal."""
+    hex_trig_groups = {
+        "6/mmm", "622", "6mm", "-6m2", "6/m", "-6", "6",  # Hexagonal
+        "-3m", "32", "3m", "-3", "3",  # Trigonal
+    }
+    return point_group in hex_trig_groups
+
+
+# Miller index transformation matrices for hexagonal/trigonal systems
+# These transform (h, k, l) directly in Miller index space
+#
+# For hexagonal prism {10-10}, the 6 faces cycle as:
+# (1,0,0) → (1,-1,0) → (0,-1,0) → (-1,0,0) → (-1,1,0) → (0,1,0) → (1,0,0)
+#
+# C6z (60°): (h, k, l) -> (h+k, -h, l)
+_HEX_C6z = np.array([
+    [1,  1, 0],
+    [-1, 0, 0],
+    [0,  0, 1]
+], dtype=np.float64)
+
+# C3z (120°): (h, k, l) -> (k, -h-k, l)
+# Note: C6² = C3
+_HEX_C3z = np.array([
+    [0,  1, 0],
+    [-1, -1, 0],
+    [0,  0, 1]
+], dtype=np.float64)
+
+# C2 about [100] direction in hex basis: (h, k, l) -> (h-k, -k, -l)
+# This C2 leaves (1,0,0) fixed - used for hexagonal point groups
+_HEX_C2_100 = np.array([
+    [ 1, 1, 0],
+    [ 0, -1, 0],
+    [ 0, 0, -1]
+], dtype=np.float64)
+
+# C2 about [110] direction in hex basis: (h, k, l) -> (k, h, -l)
+# This C2 swaps (1,0,0) <-> (0,1,0) - used for trigonal point groups
+# to generate all 6 prism faces from the {10-10} form
+_HEX_C2_110 = np.array([
+    [0, 1, 0],
+    [1, 0, 0],
+    [0, 0, -1]
+], dtype=np.float64)
+
+# Mirror perpendicular to c
+_HEX_Mz = np.array([
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, -1]
+], dtype=np.float64)
+
+# Mirror perpendicular to [100]
+_HEX_M_100 = np.array([
+    [-1, -1, 0],
+    [ 0,  1, 0],
+    [ 0,  0, 1]
+], dtype=np.float64)
+
+# Inversion
+_HEX_I = -np.eye(3)
+
+# Cache for hexagonal Miller index operations
+_HEX_POINT_GROUP_CACHE: dict[str, list[np.ndarray]] = {}
+
+
+def _get_hex_point_group_operations(point_group: str) -> list[np.ndarray]:
+    """Get Miller index transformation matrices for hexagonal/trigonal point groups."""
+    if point_group in _HEX_POINT_GROUP_CACHE:
+        return _HEX_POINT_GROUP_CACHE[point_group]
+
+    # Generators in Miller index space for hex/trigonal
+    generators_map = {
+        # Hexagonal (use C6 directly for 6-fold groups)
+        "6/mmm": [_HEX_C6z, _HEX_C2_100, _HEX_Mz],
+        "622": [_HEX_C6z, _HEX_C2_100],
+        "6mm": [_HEX_C6z, _HEX_M_100],
+        "-6m2": [_HEX_C3z, _HEX_Mz, _HEX_M_100],
+        "6/m": [_HEX_C6z, _HEX_Mz],
+        "-6": [_HEX_C3z, _HEX_Mz],
+        "6": [_HEX_C6z],
+        # Trigonal (use C3 for 3-fold groups, C2_110 swaps h<->k to generate all 6 prism faces)
+        "-3m": [_HEX_C3z, _HEX_C2_110, _HEX_I],
+        "32": [_HEX_C3z, _HEX_C2_110],
+        "3m": [_HEX_C3z, _HEX_M_100],
+        "-3": [_HEX_C3z, _HEX_I],
+        "3": [_HEX_C3z],
+    }
+
+    generators = generators_map.get(point_group, [])
+    if not generators:
+        operations = [np.eye(3)]
+    else:
+        operations = _generate_group(generators)
+
+    _HEX_POINT_GROUP_CACHE[point_group] = operations
+    return operations
+
+
 def generate_equivalent_faces(
     h: int, k: int, l: int, point_group: str, lattice: LatticeParams = DEFAULT_LATTICE
 ) -> list[tuple[int, int, int]]:
@@ -266,12 +367,17 @@ def generate_equivalent_faces(
     Returns:
         List of unique (h, k, l) tuples for equivalent faces
     """
-    # Get cached stacked operations array, or build and cache it
-    if point_group not in _POINT_GROUP_ARRAY_CACHE:
-        operations = get_point_group_operations(point_group)
-        _POINT_GROUP_ARRAY_CACHE[point_group] = np.array(operations)  # Shape: (N, 3, 3)
+    # Use special Miller index transformations for hexagonal/trigonal systems
+    if _is_hexagonal_trigonal(point_group):
+        operations = _get_hex_point_group_operations(point_group)
+        operations_arr = np.array(operations)
+    else:
+        # For other systems, use cached Cartesian operations
+        if point_group not in _POINT_GROUP_ARRAY_CACHE:
+            operations = get_point_group_operations(point_group)
+            _POINT_GROUP_ARRAY_CACHE[point_group] = np.array(operations)
+        operations_arr = _POINT_GROUP_ARRAY_CACHE[point_group]
 
-    operations_arr = _POINT_GROUP_ARRAY_CACHE[point_group]
     miller = np.array([h, k, l], dtype=np.float64)
 
     # Vectorized: apply all operations at once
