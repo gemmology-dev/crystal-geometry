@@ -314,7 +314,8 @@ def _build_halfspaces(
     face_form_indices = []
     face_millers = []
 
-    for form_idx, form in enumerate(desc.forms):
+    forms = desc.flat_forms()
+    for form_idx, form in enumerate(forms):
         miller = form.miller.as_3index()
         h, k, l = miller
 
@@ -604,7 +605,7 @@ def _generate_twinned_geometry(
         face_normals=face_normals_list,
         face_forms=final_face_forms,
         face_millers=final_face_millers,
-        forms=desc.forms,
+        forms=desc.flat_forms(),
         component_ids=component_ids,
         twin_metadata=twin_metadata,
     )
@@ -650,7 +651,7 @@ def cdl_to_geometry(desc: CrystalDescription, c_ratio: float = 1.0) -> CrystalGe
             )
     else:
         geometry = _generate_base_geometry(
-            normals, distances, face_form_indices, face_millers, desc.forms
+            normals, distances, face_form_indices, face_millers, desc.flat_forms()
         )
         # Apply modifications if present
         if desc.modifications:
