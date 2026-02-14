@@ -405,3 +405,103 @@ class TestModificationIntegration:
         """Test geometry without modifications."""
         geom = cdl_string_to_geometry("cubic[m3m]:{111}")
         assert geom.is_valid()
+
+
+# =============================================================================
+# CDL v1.3 flat_forms() Regression Tests
+# =============================================================================
+
+
+class TestFlatFormsRegression:
+    """Regression tests ensuring flat_forms() produces identical geometry.
+
+    Verifies that the geometry engine correctly uses flat_forms() for both
+    v1-style CDL (plain form lists) and v1.3-style CDL (FormGroup trees).
+    """
+
+    # Mineral CDL strings covering all major crystal systems
+    MINERAL_CDL_STRINGS = [
+        # Cubic
+        ("diamond", "cubic[m3m]:{111}@1.0 + {100}@1.3"),
+        ("garnet", "cubic[m3m]:{110}@1.0 + {211}@0.6"),
+        ("fluorite", "cubic[m3m]:{111}"),
+        ("pyrite_cube", "cubic[m3m]:{100}"),
+        ("spinel", "cubic[m3m]:{111}@1.0"),
+        # Hexagonal / Trigonal
+        ("quartz_prism", "hexagonal[6/mmm]:{10-10}@1.0 + {0001}@0.5"),
+        ("beryl", "hexagonal[6/mmm]:{10-10}@1.0 + {0001}@1.5"),
+        # Tetragonal
+        ("zircon", "tetragonal[4/mmm]:{101}"),
+        ("rutile", "tetragonal[4/mmm]:{100}@1.0 + {101}@0.8"),
+        # Orthorhombic
+        ("topaz", "orthorhombic[mmm]:{110}@1.0 + {001}@0.5"),
+        ("barite", "orthorhombic[mmm]:{001}@1.0 + {210}@0.8"),
+    ]
+
+    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    def test_mineral_geometry_valid(self, name, cdl):
+        """Each mineral CDL string produces valid geometry via flat_forms()."""
+        geom = cdl_string_to_geometry(cdl)
+        assert isinstance(geom, CrystalGeometry)
+        assert len(geom.vertices) >= 4, f"{name}: too few vertices"
+        assert len(geom.faces) >= 4, f"{name}: too few faces"
+        assert all(len(f) >= 3 for f in geom.faces), f"{name}: degenerate face"
+
+    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    def test_mineral_geometry_euler(self, name, cdl):
+        """Euler characteristic V - E + F = 2 for all mineral geometries."""
+        geom = cdl_string_to_geometry(cdl)
+        assert geom.euler_characteristic() == 2, f"{name}: Euler != 2"
+
+    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    def test_mineral_geometry_forms_are_crystal_form(self, name, cdl):
+        """Geometry.forms contains only CrystalForm objects (not FormGroup)."""
+        from cdl_parser import CrystalForm
+
+        geom = cdl_string_to_geometry(cdl)
+        for form in geom.forms:
+            assert isinstance(form, CrystalForm), (
+                f"{name}: geometry.forms contains {type(form).__name__}, expected CrystalForm"
+            )
+
+    def test_v13_grouped_cdl_geometry(self):
+        """v1.3 CDL with FormGroup produces valid geometry via flat_forms()."""
+        cdl = "cubic[m3m]:({111}@1.0 + {100}@1.3)[phantom:3]"
+        desc = parse_cdl(cdl)
+
+        # flat_forms() should return 2 CrystalForm objects with phantom feature
+        flat = desc.flat_forms()
+        assert len(flat) == 2
+        assert all(hasattr(f, "miller") for f in flat)
+
+        # Geometry should be identical to the non-grouped version
+        geom = cdl_to_geometry(desc)
+        assert isinstance(geom, CrystalGeometry)
+        assert len(geom.faces) == 14  # 8 octahedron + 6 cube
+        assert geom.euler_characteristic() == 2
+
+    def test_v13_grouped_vs_ungrouped_identical(self):
+        """Grouped v1.3 CDL produces same vertex/face counts as ungrouped v1."""
+        ungrouped = cdl_string_to_geometry("cubic[m3m]:{111}@1.0 + {100}@1.3")
+        grouped = cdl_string_to_geometry("cubic[m3m]:({111}@1.0 + {100}@1.3)[phantom:3]")
+
+        assert len(ungrouped.vertices) == len(grouped.vertices)
+        assert len(ungrouped.faces) == len(grouped.faces)
+        assert ungrouped.euler_characteristic() == grouped.euler_characteristic()
+
+    def test_v1_cdl_flat_forms_identity(self):
+        """For v1-style CDL, flat_forms() returns identical forms to direct iteration."""
+        from cdl_parser import CrystalForm
+
+        desc = parse_cdl("cubic[m3m]:{111}@1.0 + {100}@1.3")
+        flat = desc.flat_forms()
+
+        # All should be CrystalForm
+        assert len(flat) == 2
+        assert all(isinstance(f, CrystalForm) for f in flat)
+
+        # Miller indices and scales preserved
+        assert flat[0].miller.as_3index() == (1, 1, 1)
+        assert flat[0].scale == 1.0
+        assert flat[1].miller.as_3index() == (1, 0, 0)
+        assert flat[1].scale == 1.3
