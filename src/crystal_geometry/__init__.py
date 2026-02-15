@@ -18,7 +18,7 @@ Example:
     >>> geom = cdl_string_to_geometry("cubic[m3m]:{111}")
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.5"
 __author__ = "Fabian Schuh"
 __email__ = "fabian@gemmology.dev"
 
