@@ -92,14 +92,14 @@ USE_OPENMP = "OFF"
 [tool.cibuildwheel]
 # Build for Python 3.10-3.13
 build = "cp310-* cp311-* cp312-* cp313-*"
-# Skip musllinux and PyPy
-skip = "*-musllinux* pp*"
+# Skip musllinux (Alpine), PyPy, and 32-bit Linux (i686)
+skip = "*-musllinux* pp* *_i686"
 # Skip in-container tests (CI runs the full test suite separately).
 # Testing inside cibuildwheel fails because scipy needs OpenBLAS in manylinux.
 test-skip = "*"
 
 [tool.cibuildwheel.linux]
-before-all = "yum install -y eigen3-devel openblas-devel || (apt-get update && apt-get install -y libeigen3-dev libopenblas-dev)"
+before-all = "(yum install -y epel-release && yum install -y eigen3-devel openblas-devel) || (apt-get update && apt-get install -y libeigen3-dev libopenblas-dev) || true"
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
