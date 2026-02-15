@@ -53,7 +53,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install gemmology-cdl-parser
           pip install -e ".[dev]" -v
 
       - name: Verify native module loaded
@@ -103,7 +103,7 @@ jobs:
 
       - name: Install without native module
         run: |
-          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install gemmology-cdl-parser
           # Install without building native module (skip cmake)
           pip install numpy scipy pytest pytest-cov ruff mypy
           pip install -e . --no-build-isolation --config-settings=cmake.define.SKIP_NATIVE=ON || pip install -e .
@@ -146,7 +146,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install gemmology-cdl-parser
           pip install -e ".[dev]" --no-build-isolation || pip install numpy scipy ruff mypy
 
       - name: Lint with Ruff
@@ -173,7 +173,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
+          pip install gemmology-cdl-parser
           # Install build deps and dev dependencies first, then package
           pip install scikit-build-core pybind11 numpy scipy pytest pytest-cov
           pip install -e . --no-build-isolation

@@ -37,12 +37,16 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-*"
           # Skip musllinux (Alpine) and PyPy
           CIBW_SKIP: "*-musllinux* pp*"
-          # Install Eigen before building (detect package manager)
+          # Skip in-container tests (CI already runs the full test suite).
+          # Testing inside cibuildwheel fails because scipy needs OpenBLAS
+          # to build from source in the manylinux container.
+          CIBW_TEST_SKIP: "*"
+          # Install Eigen and OpenBLAS before building
           CIBW_BEFORE_ALL_LINUX: |
             if command -v yum &> /dev/null; then
-              yum install -y eigen3-devel
+              yum install -y eigen3-devel openblas-devel
             elif command -v apt-get &> /dev/null; then
-              apt-get update && apt-get install -y libeigen3-dev
+              apt-get update && apt-get install -y libeigen3-dev libopenblas-dev
             fi
           CIBW_BEFORE_ALL_MACOS: |
             brew install eigen
@@ -53,9 +57,7 @@ jobs:
             CMAKE_PREFIX_PATH="C:\\ProgramData\\chocolatey\\lib\\eigen\\share\\eigen3\\cmake"
           # Install cdl-parser dependency before building
           CIBW_BEFORE_BUILD: >
-            pip install "gemmology-cdl-parser @ git+https://github.com/gemmology-dev/cdl-parser.git"
-          # Skip wheel test - cdl-parser dependency not available in cibuildwheel test env
-          # CIBW_TEST_COMMAND: python -c "from crystal_geometry import get_backend; print(f'Backend: {get_backend()}')"
+            pip install gemmology-cdl-parser
           # Repair wheels (bundle libraries)
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: "auditwheel repair -w {dest_dir} {wheel}"
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: "delocate-wheel -w {dest_dir} {wheel}"
