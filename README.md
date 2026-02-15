@@ -31,6 +31,9 @@ print(f"Octahedron has {len(octahedron.faces)} faces")
 - **Half-Space Intersection**: Robust geometry computation using scipy
 - **7 Crystal Systems**: Cubic, tetragonal, orthorhombic, hexagonal, trigonal, monoclinic, triclinic
 - **Miller Indices**: Full support for 3-index (hkl) and 4-index (hkil) notation
+- **Amorphous Geometry** (v2.0): 7 parametric shape generators for non-crystalline materials (massive, botryoidal, reniform, stalactitic, mammillary, nodular, conchoidal)
+- **Aggregate Layouts** (v2.0): 6 spatial arrangement algorithms for crystal aggregates (parallel, random, radial, epitaxial, druse, cluster)
+- **Nested Growth** (v2.0): Geometry support for overgrowth relationships via the `>` operator
 
 ## Core API
 
@@ -78,6 +81,9 @@ geom.faces         # List of face vertex indices
 geom.face_normals  # List of unit normal vectors
 geom.face_forms    # Form index for each face
 geom.face_millers  # Miller indices for each face
+geom.is_amorphous  # True for amorphous geometry (v2.0)
+geom.aggregate_metadata  # AggregateMetadata or None (v2.0)
+geom.component_ids       # Per-face component ID for aggregates/twins
 
 # Methods
 geom.get_edges()           # Get unique edges as vertex pairs
@@ -87,6 +93,19 @@ geom.translate(offset)     # Translate by vector
 geom.euler_characteristic()  # V - E + F (should be 2)
 geom.is_valid()            # Verify geometry integrity
 geom.to_dict()             # Export to dictionary
+```
+
+### AggregateMetadata (v2.0)
+
+```python
+from crystal_geometry import AggregateMetadata
+
+# Attached to CrystalGeometry.aggregate_metadata for aggregate geometry
+# Properties:
+#   arrangement: str     - Layout algorithm ('parallel', 'random', etc.)
+#   n_instances: int     - Number of crystal instances
+#   spacing: float|None  - Spacing between instances
+#   orientation: str|None - Orientation mode
 ```
 
 ### Symmetry Operations
@@ -160,12 +179,50 @@ geom = cdl_string_to_geometry("hexagonal[6/mmm]:{10-10}@1.0 + {0001}@0.5")
 geom = cdl_string_to_geometry("trigonal[-3m]:{10-10}@1.0 + {10-11}@0.8")
 ```
 
+### Amorphous Shape (v2.0)
+
+```python
+from crystal_geometry import generate_amorphous_shape
+
+# Generate parametric mesh for an amorphous material
+geom = generate_amorphous_shape("botryoidal", radius=1.0, seed=42)
+print(geom.is_amorphous)  # True
+```
+
+Available shapes: `massive`, `botryoidal`, `reniform`, `stalactitic`, `mammillary`, `nodular`, `conchoidal`.
+
+### Crystal Aggregate (v2.0)
+
+```python
+from crystal_geometry import generate_aggregate, cdl_string_to_geometry
+
+# Generate base geometry, then arrange as aggregate
+base = cdl_string_to_geometry("trigonal[32]:{10-10}@1.0 + {10-11}@0.8")
+aggregate = generate_aggregate(base, arrangement="cluster", count=12, seed=42)
+print(aggregate.aggregate_metadata.n_instances)  # 12
+```
+
+Available arrangements: `parallel`, `random`, `radial`, `epitaxial`, `druse`, `cluster`. Instance count is capped at 200 for performance.
+
+## Source Modules
+
+| Module | Purpose |
+|--------|---------|
+| `geometry.py` | Core half-space intersection engine |
+| `symmetry.py` | Point group symmetry operations |
+| `twins.py` | Twin geometry computation |
+| `habits.py` | Convenience constructors |
+| `amorphous.py` | Parametric mesh generators for amorphous shapes (v2.0) |
+| `aggregates.py` | Spatial layout algorithms for crystal aggregates (v2.0) |
+| `models.py` | `CrystalGeometry`, `AggregateMetadata` data classes |
+| `modifications.py` | Morphological modification transforms |
+
 ## Requirements
 
 - Python >= 3.10
 - numpy >= 1.20.0
 - scipy >= 1.7.0
-- cdl-parser >= 1.0.0
+- cdl-parser >= 2.0.0
 
 ## Documentation
 

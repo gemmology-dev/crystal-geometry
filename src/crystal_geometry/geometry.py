@@ -14,6 +14,7 @@ from scipy.optimize import linprog
 from scipy.spatial import HalfspaceIntersection
 
 from cdl_parser import CrystalDescription, parse_cdl
+from cdl_parser.models import AggregateSpec, AmorphousDescription, FormNode, NestedGrowth
 
 from ._accel import prefer_native
 from .models import CrystalGeometry, LatticeParams, TwinMetadata
@@ -611,19 +612,209 @@ def _generate_twinned_geometry(
     )
 
 
-def cdl_to_geometry(desc: CrystalDescription, c_ratio: float = 1.0) -> CrystalGeometry:
-    """Convert CDL description to 3D geometry.
+def _generate_nested_growth(
+    desc: CrystalDescription | AmorphousDescription,
+    node: NestedGrowth,
+    lattice: LatticeParams,
+    c_ratio: float = 1.0,
+) -> CrystalGeometry:
+    """Generate nested growth geometry (base > overgrowth).
+
+    Recursively generates base and overgrowth geometries, positioning
+    each overgrowth on the topmost termination face of its host.
 
     Args:
-        desc: Parsed CDL description
+        desc: CDL description (for system/point_group context)
+        node: NestedGrowth node from the parse tree
+        lattice: Lattice parameters
+        c_ratio: c/a ratio for non-cubic systems
+
+    Returns:
+        Composite CrystalGeometry with component_ids
+    """
+    from cdl_parser.models import CrystalForm, FormGroup
+
+    def _node_to_geometry(form_node: FormNode, gen_id: int) -> CrystalGeometry:
+        """Convert a single FormNode to geometry."""
+        if isinstance(form_node, NestedGrowth):
+            return _generate_nested_growth(desc, form_node, lattice, c_ratio)
+        elif isinstance(form_node, CrystalForm):
+            # Build a minimal CrystalDescription for this single form
+            mini_desc = CrystalDescription(
+                system=desc.system,
+                point_group=desc.point_group if isinstance(desc, CrystalDescription) else "1",
+                forms=[form_node],
+            )
+            n, d, ffi, fm = _build_halfspaces(mini_desc, lattice)
+            return _generate_base_geometry(n, d, ffi, fm, [form_node])
+        elif isinstance(form_node, FormGroup):
+            # Build geometry from all forms in the group
+            mini_desc = CrystalDescription(
+                system=desc.system,
+                point_group=desc.point_group if isinstance(desc, CrystalDescription) else "1",
+                forms=form_node.forms,
+            )
+            n, d, ffi, fm = _build_halfspaces(mini_desc, lattice)
+            flat = mini_desc.flat_forms()
+            return _generate_base_geometry(n, d, ffi, fm, flat)
+        else:
+            raise ValueError(f"Unsupported form node type in nested growth: {type(form_node)}")
+
+    # Generate base geometry
+    base_geom = _node_to_geometry(node.base, 0)
+
+    # Generate overgrowth geometry
+    over_geom = _node_to_geometry(node.overgrowth, 1)
+
+    # Find the termination face (topmost face along c-axis / z-axis)
+    best_z = -float("inf")
+    best_center = np.array([0.0, 0.0, 0.0])
+    best_normal = np.array([0.0, 0.0, 1.0])
+    for i, face in enumerate(base_geom.faces):
+        face_verts = base_geom.vertices[face]
+        center = np.mean(face_verts, axis=0)
+        if center[2] > best_z:
+            best_z = center[2]
+            best_center = center
+            if i < len(base_geom.face_normals):
+                best_normal = base_geom.face_normals[i]
+
+    # Scale overgrowth to be smaller (70% of base)
+    over_max = np.max(np.abs(over_geom.vertices)) if len(over_geom.vertices) > 0 else 1.0
+    base_max = np.max(np.abs(base_geom.vertices)) if len(base_geom.vertices) > 0 else 1.0
+    scale = 0.7 * base_max / max(over_max, 1e-10)
+    over_verts = over_geom.vertices * scale
+
+    # Position overgrowth at termination face center
+    over_center = np.mean(over_verts, axis=0) if len(over_verts) > 0 else np.zeros(3)
+    offset = best_center - over_center
+    over_verts = over_verts + offset
+
+    # Concatenate geometries
+    vertex_offset = len(base_geom.vertices)
+    all_verts = np.vstack([base_geom.vertices, over_verts])
+    all_faces = list(base_geom.faces)
+    for face in over_geom.faces:
+        all_faces.append([idx + vertex_offset for idx in face])
+
+    all_normals = list(base_geom.face_normals) + list(over_geom.face_normals)
+    all_forms = list(base_geom.face_forms) + list(over_geom.face_forms)
+    all_millers = list(base_geom.face_millers) + list(over_geom.face_millers)
+
+    # Assign component_ids: base=0, overgrowth=1 (or propagate existing)
+    base_ids = base_geom.component_ids or [0] * len(base_geom.faces)
+    over_ids = over_geom.component_ids or [0] * len(over_geom.faces)
+    max_base_id = max(base_ids) if base_ids else 0
+    shifted_over_ids = [cid + max_base_id + 1 for cid in over_ids]
+    component_ids = list(base_ids) + shifted_over_ids
+
+    return CrystalGeometry(
+        vertices=all_verts,
+        faces=all_faces,
+        face_normals=all_normals,
+        face_forms=all_forms,
+        face_millers=all_millers,
+        forms=list(base_geom.forms) + list(over_geom.forms),
+        component_ids=component_ids,
+    )
+
+
+def cdl_to_geometry(
+    desc: CrystalDescription | AmorphousDescription, c_ratio: float = 1.0
+) -> CrystalGeometry:
+    """Convert CDL description to 3D geometry.
+
+    Supports crystalline descriptions, amorphous descriptions,
+    nested growth, and aggregates.
+
+    Args:
+        desc: Parsed CDL description (CrystalDescription or AmorphousDescription)
         c_ratio: c/a ratio for non-cubic systems
 
     Returns:
         CrystalGeometry with vertices and faces
     """
+    # Handle amorphous descriptions
+    if isinstance(desc, AmorphousDescription):
+        from .amorphous import generate_amorphous_shape
+
+        shape = desc.shapes[0] if desc.shapes else "massive"
+        return generate_amorphous_shape(shape)
+
     lattice = get_lattice_for_system(desc.system, c_ratio)
 
-    # Build halfspaces from forms
+    # Check for NestedGrowth or AggregateSpec nodes in the form tree
+    # (before flattening, since flat_forms() strips these)
+    nested_nodes: list[NestedGrowth] = []
+    aggregate_nodes: list[AggregateSpec] = []
+    regular_forms: list[FormNode] = []
+
+    for form_node in desc.forms:
+        if isinstance(form_node, NestedGrowth):
+            nested_nodes.append(form_node)
+        elif isinstance(form_node, AggregateSpec):
+            aggregate_nodes.append(form_node)
+        else:
+            regular_forms.append(form_node)
+
+    # Handle nested growth as primary geometry
+    if nested_nodes:
+        geometry = _generate_nested_growth(desc, nested_nodes[0], lattice, c_ratio)
+        if desc.modifications:
+            from .modifications import apply_modifications
+
+            geometry = CrystalGeometry(
+                vertices=apply_modifications(geometry.vertices, desc.modifications),
+                faces=geometry.faces,
+                face_normals=geometry.face_normals,
+                face_forms=geometry.face_forms,
+                face_millers=geometry.face_millers,
+                forms=geometry.forms,
+                component_ids=geometry.component_ids,
+            )
+        return geometry
+
+    # Handle aggregates
+    if aggregate_nodes:
+        agg = aggregate_nodes[0]
+        # Build geometry for the aggregate's base form
+        from cdl_parser.models import CrystalForm, FormGroup
+
+        if isinstance(agg.form, (CrystalForm, FormGroup)):
+            agg_desc = CrystalDescription(
+                system=desc.system,
+                point_group=desc.point_group,
+                forms=[agg.form],
+            )
+        else:
+            agg_desc = CrystalDescription(
+                system=desc.system,
+                point_group=desc.point_group,
+                forms=desc.forms[:1] if desc.forms else [],
+            )
+
+        base_geom = cdl_to_geometry(agg_desc, c_ratio)
+
+        from .aggregates import generate_aggregate
+
+        spacing_val: float | None = None
+        if agg.spacing:
+            # Parse spacing string (e.g. "0.5mm" -> 0.5)
+            try:
+                spacing_val = float("".join(c for c in agg.spacing if c in "0123456789."))
+            except ValueError:
+                spacing_val = None
+
+        geometry = generate_aggregate(
+            base_geometry=base_geom,
+            arrangement=agg.arrangement,
+            count=agg.count,
+            spacing=spacing_val,
+            orientation=agg.orientation,
+        )
+        return geometry
+
+    # Standard crystalline geometry
     normals, distances, face_form_indices, face_millers = _build_halfspaces(desc, lattice)
 
     # Generate geometry (twinned or base)

@@ -45,6 +45,32 @@ class TwinMetadata:
 
 
 @dataclass
+class AggregateMetadata:
+    """Metadata for aggregate crystal geometry.
+
+    Attributes:
+        arrangement: Layout algorithm used ('parallel', 'random', 'radial', etc.)
+        n_instances: Number of crystal instances in the aggregate
+        spacing: Optional spacing between instances
+        orientation: Optional orientation mode ('aligned', 'random', etc.)
+    """
+
+    arrangement: str
+    n_instances: int
+    spacing: float | None = None
+    orientation: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        return {
+            "arrangement": self.arrangement,
+            "n_instances": self.n_instances,
+            "spacing": self.spacing,
+            "orientation": self.orientation,
+        }
+
+
+@dataclass
 class CrystalGeometry:
     """3D crystal geometry with vertices and faces.
 
@@ -57,6 +83,8 @@ class CrystalGeometry:
         forms: Original form definitions from CDL
         component_ids: Optional array of component IDs for each face (for twins)
         twin_metadata: Optional metadata for twinned crystals
+        is_amorphous: Whether this is an amorphous (non-crystalline) geometry
+        aggregate_metadata: Optional metadata for aggregate geometries
     """
 
     vertices: np.ndarray  # Nx3 array of vertex positions
@@ -67,6 +95,8 @@ class CrystalGeometry:
     forms: list[CrystalForm] = field(default_factory=list)  # Original form definitions
     component_ids: list[int] | None = None  # Component ID for each face (for twins)
     twin_metadata: TwinMetadata | None = None  # Metadata for twinned crystals
+    is_amorphous: bool = False  # Whether this is amorphous geometry
+    aggregate_metadata: AggregateMetadata | None = None  # Metadata for aggregates
 
     def get_edges(self) -> list[tuple[int, int]]:
         """Get all unique edges as vertex index pairs.
@@ -168,17 +198,20 @@ class CrystalGeometry:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
-        result = {
+        result: dict[str, Any] = {
             "vertices": self.vertices.tolist(),
             "faces": self.faces,
             "face_normals": [n.tolist() for n in self.face_normals],
             "face_forms": self.face_forms,
             "face_millers": self.face_millers,
+            "is_amorphous": self.is_amorphous,
         }
         if self.component_ids is not None:
             result["component_ids"] = self.component_ids
         if self.twin_metadata is not None:
             result["twin_metadata"] = self.twin_metadata.to_dict()
+        if self.aggregate_metadata is not None:
+            result["aggregate_metadata"] = self.aggregate_metadata.to_dict()
         return result
 
 

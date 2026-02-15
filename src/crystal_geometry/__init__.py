@@ -65,8 +65,20 @@ from .habits import (
     list_habits,
 )
 
+# Amorphous geometry
+from .amorphous import generate_amorphous_shape
+
+# Aggregate geometry
+from .aggregates import generate_aggregate, MAX_INSTANCES as AGGREGATE_MAX_INSTANCES
+
 # Data classes
-from .models import DEFAULT_LATTICE, CrystalGeometry, LatticeParams, TwinMetadata
+from .models import (
+    DEFAULT_LATTICE,
+    AggregateMetadata,
+    CrystalGeometry,
+    LatticeParams,
+    TwinMetadata,
+)
 
 # Modifications
 from .modifications import (
@@ -123,6 +135,12 @@ __all__ = [
     "LatticeParams",
     "DEFAULT_LATTICE",
     "TwinMetadata",
+    "AggregateMetadata",
+    # Amorphous
+    "generate_amorphous_shape",
+    # Aggregates
+    "generate_aggregate",
+    "AGGREGATE_MAX_INSTANCES",
     # Symmetry
     "generate_equivalent_faces",
     "get_point_group_operations",
