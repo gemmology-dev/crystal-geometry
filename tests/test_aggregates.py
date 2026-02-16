@@ -107,9 +107,7 @@ class TestGenerateAggregate:
 
     def test_aggregate_metadata(self):
         base = _make_base_geometry()
-        result = generate_aggregate(
-            base, "random", count=5, spacing=1.5, orientation="aligned"
-        )
+        result = generate_aggregate(base, "random", count=5, spacing=1.5, orientation="aligned")
         meta = result.aggregate_metadata
         assert meta is not None
         assert meta.arrangement == "random"
@@ -148,7 +146,7 @@ class TestGenerateAggregate:
         # Vertices of component 1 should be offset from component 0
         n_base_verts = len(base.vertices)
         comp0_center = np.mean(result.vertices[:n_base_verts], axis=0)
-        comp1_center = np.mean(result.vertices[n_base_verts:2 * n_base_verts], axis=0)
+        comp1_center = np.mean(result.vertices[n_base_verts : 2 * n_base_verts], axis=0)
         assert np.linalg.norm(comp1_center - comp0_center) > 1.0
 
     def test_unknown_arrangement_raises(self):

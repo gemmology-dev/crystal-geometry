@@ -822,7 +822,11 @@ def cdl_to_geometry(
     # so they can be applied before the transform
     if desc.twin is not None:
         geometry = _generate_twinned_geometry(
-            desc, normals, distances, face_form_indices, face_millers,
+            desc,
+            normals,
+            distances,
+            face_form_indices,
+            face_millers,
             modifications=desc.modifications,
         )
         # Modifications were applied inside for deferred-transform twins

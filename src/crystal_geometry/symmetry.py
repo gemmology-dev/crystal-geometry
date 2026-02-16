@@ -256,8 +256,18 @@ def miller_to_normal(
 def _is_hexagonal_trigonal(point_group: str) -> bool:
     """Check if point group is hexagonal or trigonal."""
     hex_trig_groups = {
-        "6/mmm", "622", "6mm", "-6m2", "6/m", "-6", "6",  # Hexagonal
-        "-3m", "32", "3m", "-3", "3",  # Trigonal
+        "6/mmm",
+        "622",
+        "6mm",
+        "-6m2",
+        "6/m",
+        "-6",
+        "6",  # Hexagonal
+        "-3m",
+        "32",
+        "3m",
+        "-3",
+        "3",  # Trigonal
     }
     return point_group in hex_trig_groups
 
@@ -269,50 +279,26 @@ def _is_hexagonal_trigonal(point_group: str) -> bool:
 # (1,0,0) → (1,-1,0) → (0,-1,0) → (-1,0,0) → (-1,1,0) → (0,1,0) → (1,0,0)
 #
 # C6z (60°): (h, k, l) -> (h+k, -h, l)
-_HEX_C6z = np.array([
-    [1,  1, 0],
-    [-1, 0, 0],
-    [0,  0, 1]
-], dtype=np.float64)
+_HEX_C6z = np.array([[1, 1, 0], [-1, 0, 0], [0, 0, 1]], dtype=np.float64)
 
 # C3z (120°): (h, k, l) -> (k, -h-k, l)
 # Note: C6² = C3
-_HEX_C3z = np.array([
-    [0,  1, 0],
-    [-1, -1, 0],
-    [0,  0, 1]
-], dtype=np.float64)
+_HEX_C3z = np.array([[0, 1, 0], [-1, -1, 0], [0, 0, 1]], dtype=np.float64)
 
 # C2 about [100] direction in hex basis: (h, k, l) -> (h-k, -k, -l)
 # This C2 leaves (1,0,0) fixed - used for hexagonal point groups
-_HEX_C2_100 = np.array([
-    [ 1, 1, 0],
-    [ 0, -1, 0],
-    [ 0, 0, -1]
-], dtype=np.float64)
+_HEX_C2_100 = np.array([[1, 1, 0], [0, -1, 0], [0, 0, -1]], dtype=np.float64)
 
 # C2 about [110] direction in hex basis: (h, k, l) -> (k, h, -l)
 # This C2 swaps (1,0,0) <-> (0,1,0) - used for trigonal point groups
 # to generate all 6 prism faces from the {10-10} form
-_HEX_C2_110 = np.array([
-    [0, 1, 0],
-    [1, 0, 0],
-    [0, 0, -1]
-], dtype=np.float64)
+_HEX_C2_110 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, -1]], dtype=np.float64)
 
 # Mirror perpendicular to c
-_HEX_Mz = np.array([
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, -1]
-], dtype=np.float64)
+_HEX_Mz = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -1]], dtype=np.float64)
 
 # Mirror perpendicular to [100]
-_HEX_M_100 = np.array([
-    [-1, -1, 0],
-    [ 0,  1, 0],
-    [ 0,  0, 1]
-], dtype=np.float64)
+_HEX_M_100 = np.array([[-1, -1, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float64)
 
 # Inversion
 _HEX_I = -np.eye(3)

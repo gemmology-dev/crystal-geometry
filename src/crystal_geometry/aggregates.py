@@ -22,11 +22,13 @@ def _rotation_matrix_from_axis_angle(axis: np.ndarray, angle: float) -> np.ndarr
     s = np.sin(angle)
     t = 1 - c
     x, y, z = axis
-    return np.array([
-        [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
-        [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
-        [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
-    ])
+    return np.array(
+        [
+            [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+            [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+            [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+        ]
+    )
 
 
 def _random_rotation(rng: np.random.Generator) -> np.ndarray:
@@ -50,9 +52,7 @@ def _make_transform(rotation: np.ndarray, translation: np.ndarray) -> np.ndarray
     return T
 
 
-def layout_parallel(
-    count: int, spacing: float = 1.0, seed: int = 42
-) -> list[np.ndarray]:
+def layout_parallel(count: int, spacing: float = 1.0, seed: int = 42) -> list[np.ndarray]:
     """Parallel layout: translate along c-axis with even spacing.
 
     Args:
@@ -73,9 +73,7 @@ def layout_parallel(
     return transforms
 
 
-def layout_random(
-    count: int, bounding_radius: float = 2.0, seed: int = 42
-) -> list[np.ndarray]:
+def layout_random(count: int, bounding_radius: float = 2.0, seed: int = 42) -> list[np.ndarray]:
     """Random layout: random rotation and position within bounding sphere.
 
     Args:
@@ -99,9 +97,7 @@ def layout_random(
     return transforms
 
 
-def layout_radial(
-    count: int, spread_radius: float = 2.0, seed: int = 42
-) -> list[np.ndarray]:
+def layout_radial(count: int, spread_radius: float = 2.0, seed: int = 42) -> list[np.ndarray]:
     """Radial layout: evenly rotated around origin, translated outward.
 
     Args:
@@ -162,9 +158,7 @@ def layout_epitaxial(
     return transforms
 
 
-def layout_druse(
-    count: int, hemisphere_radius: float = 2.0, seed: int = 42
-) -> list[np.ndarray]:
+def layout_druse(count: int, hemisphere_radius: float = 2.0, seed: int = 42) -> list[np.ndarray]:
     """Druse layout: crystals pointing outward on a hemisphere surface.
 
     Args:
@@ -197,9 +191,7 @@ def layout_druse(
     return transforms
 
 
-def layout_cluster(
-    count: int, dome_radius: float = 2.0, seed: int = 42
-) -> list[np.ndarray]:
+def layout_cluster(count: int, dome_radius: float = 2.0, seed: int = 42) -> list[np.ndarray]:
     """Cluster layout: random rotation and position on a dome.
 
     Args:

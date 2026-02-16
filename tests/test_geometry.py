@@ -438,7 +438,9 @@ class TestFlatFormsRegression:
         ("barite", "orthorhombic[mmm]:{001}@1.0 + {210}@0.8"),
     ]
 
-    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    @pytest.mark.parametrize(
+        "name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS]
+    )
     def test_mineral_geometry_valid(self, name, cdl):
         """Each mineral CDL string produces valid geometry via flat_forms()."""
         geom = cdl_string_to_geometry(cdl)
@@ -447,13 +449,17 @@ class TestFlatFormsRegression:
         assert len(geom.faces) >= 4, f"{name}: too few faces"
         assert all(len(f) >= 3 for f in geom.faces), f"{name}: degenerate face"
 
-    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    @pytest.mark.parametrize(
+        "name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS]
+    )
     def test_mineral_geometry_euler(self, name, cdl):
         """Euler characteristic V - E + F = 2 for all mineral geometries."""
         geom = cdl_string_to_geometry(cdl)
         assert geom.euler_characteristic() == 2, f"{name}: Euler != 2"
 
-    @pytest.mark.parametrize("name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS])
+    @pytest.mark.parametrize(
+        "name,cdl", MINERAL_CDL_STRINGS, ids=[m[0] for m in MINERAL_CDL_STRINGS]
+    )
     def test_mineral_geometry_forms_are_crystal_form(self, name, cdl):
         """Geometry.forms contains only CrystalForm objects (not FormGroup)."""
         from cdl_parser import CrystalForm

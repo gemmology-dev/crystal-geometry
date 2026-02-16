@@ -27,9 +27,18 @@ def _icosphere(subdivisions: int = 2, radius: float = 1.0) -> tuple[np.ndarray, 
 
     # Icosahedron vertices
     verts = [
-        [-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0],
-        [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
-        [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1],
+        [-1, t, 0],
+        [1, t, 0],
+        [-1, -t, 0],
+        [1, -t, 0],
+        [0, -1, t],
+        [0, 1, t],
+        [0, -1, -t],
+        [0, 1, -t],
+        [t, 0, -1],
+        [t, 0, 1],
+        [-t, 0, -1],
+        [-t, 0, 1],
     ]
     vertices = np.array(verts, dtype=np.float64)
     # Normalise to unit sphere
@@ -37,10 +46,26 @@ def _icosphere(subdivisions: int = 2, radius: float = 1.0) -> tuple[np.ndarray, 
 
     # Icosahedron faces
     faces = [
-        [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
-        [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
-        [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
-        [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+        [0, 11, 5],
+        [0, 5, 1],
+        [0, 1, 7],
+        [0, 7, 10],
+        [0, 10, 11],
+        [1, 5, 9],
+        [5, 11, 4],
+        [11, 10, 2],
+        [10, 7, 6],
+        [7, 1, 8],
+        [3, 9, 4],
+        [3, 4, 2],
+        [3, 2, 6],
+        [3, 6, 8],
+        [3, 8, 9],
+        [4, 9, 5],
+        [2, 4, 11],
+        [6, 2, 10],
+        [8, 6, 7],
+        [9, 8, 1],
     ]
 
     # Subdivide
@@ -68,9 +93,7 @@ def _icosphere(subdivisions: int = 2, radius: float = 1.0) -> tuple[np.ndarray, 
     return vertices, faces
 
 
-def _compute_face_normals(
-    vertices: np.ndarray, faces: list[list[int]]
-) -> list[np.ndarray]:
+def _compute_face_normals(vertices: np.ndarray, faces: list[list[int]]) -> list[np.ndarray]:
     """Compute outward-pointing normal for each face."""
     normals = []
     for face in faces:
@@ -85,9 +108,7 @@ def _compute_face_normals(
     return normals
 
 
-def _make_amorphous_geometry(
-    vertices: np.ndarray, faces: list[list[int]]
-) -> CrystalGeometry:
+def _make_amorphous_geometry(vertices: np.ndarray, faces: list[list[int]]) -> CrystalGeometry:
     """Wrap raw mesh data into a CrystalGeometry with amorphous flags."""
     face_normals = _compute_face_normals(vertices, faces)
     return CrystalGeometry(
@@ -285,9 +306,7 @@ def generate_mammillary(radius: float = 1.0, seed: int = 42) -> CrystalGeometry:
 
         if len(boundary) >= 3:
             # Sort boundary by angle
-            angles = np.arctan2(
-                new_verts[boundary, 1], new_verts[boundary, 0]
-            )
+            angles = np.arctan2(new_verts[boundary, 1], new_verts[boundary, 0])
             boundary = [boundary[i] for i in np.argsort(angles)]
             for i in range(len(boundary)):
                 j = (i + 1) % len(boundary)
@@ -353,9 +372,7 @@ _SHAPE_GENERATORS = {
 }
 
 
-def generate_amorphous_shape(
-    shape: str, radius: float = 1.0, seed: int = 42
-) -> CrystalGeometry:
+def generate_amorphous_shape(shape: str, radius: float = 1.0, seed: int = 42) -> CrystalGeometry:
     """Generate geometry for a named amorphous shape.
 
     Args:
