@@ -1,6 +1,6 @@
 [project]
 name = "gemmology-crystal-geometry"
-version = "1.0.5"
+version = "2.0.0"
 description = "3D crystal geometry engine for crystallographic visualization"
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,7 +38,7 @@ classifiers = [
     "Typing :: Typed"
 ]
 dependencies = [
-    "gemmology-cdl-parser>=1.0.0",
+    "gemmology-cdl-parser>=2.0.0",
     "numpy>=1.20.0",
     "scipy>=1.7.0",
 ]
