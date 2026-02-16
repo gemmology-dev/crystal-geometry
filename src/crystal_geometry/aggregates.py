@@ -294,7 +294,7 @@ def generate_aggregate(
     kwargs: dict[str, float | int] = {"count": count, "seed": seed}
     if spacing is not None and arrangement == "parallel":
         kwargs["spacing"] = spacing
-    transforms = layout_fn(**kwargs)  # type: ignore[arg-type]
+    transforms = layout_fn(**kwargs)  # type: ignore[operator]
 
     # Apply transforms to base geometry and concatenate
     all_verts: list[np.ndarray] = []
