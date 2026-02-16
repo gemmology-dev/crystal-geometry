@@ -29,6 +29,13 @@ from ._accel import (
     get_num_threads,
     set_num_threads,
 )
+from .aggregates import MAX_INSTANCES as AGGREGATE_MAX_INSTANCES
+
+# Aggregate geometry
+from .aggregates import generate_aggregate
+
+# Amorphous geometry
+from .amorphous import generate_amorphous_shape
 
 # Core geometry generation
 from .geometry import (
@@ -64,12 +71,6 @@ from .habits import (
     get_habit,
     list_habits,
 )
-
-# Amorphous geometry
-from .amorphous import generate_amorphous_shape
-
-# Aggregate geometry
-from .aggregates import generate_aggregate, MAX_INSTANCES as AGGREGATE_MAX_INSTANCES
 
 # Data classes
 from .models import (

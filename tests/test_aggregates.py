@@ -87,7 +87,7 @@ class TestLayoutAlgorithms:
     def test_deterministic_random_layout(self):
         t1 = layout_random(count=5, seed=42)
         t2 = layout_random(count=5, seed=42)
-        for a, b in zip(t1, t2):
+        for a, b in zip(t1, t2, strict=True):
             np.testing.assert_array_equal(a, b)
 
 

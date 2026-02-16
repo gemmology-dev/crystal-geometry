@@ -1,11 +1,9 @@
 """Tests for nested growth geometry generation."""
 
 import numpy as np
-import pytest
 
 from cdl_parser.models import CrystalDescription, CrystalForm, FormGroup, MillerIndex, NestedGrowth
 from crystal_geometry.geometry import cdl_to_geometry
-from crystal_geometry.models import LatticeParams
 
 
 class TestNestedGrowth:

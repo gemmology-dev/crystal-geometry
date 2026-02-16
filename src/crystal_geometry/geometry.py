@@ -8,6 +8,7 @@ Uses half-space intersection to combine crystal forms.
 from __future__ import annotations
 
 import itertools
+from typing import Any
 
 import numpy as np
 from scipy.optimize import linprog
@@ -669,15 +670,12 @@ def _generate_nested_growth(
     # Find the termination face (topmost face along c-axis / z-axis)
     best_z = -float("inf")
     best_center = np.array([0.0, 0.0, 0.0])
-    best_normal = np.array([0.0, 0.0, 1.0])
-    for i, face in enumerate(base_geom.faces):
+    for face in base_geom.faces:
         face_verts = base_geom.vertices[face]
         center = np.mean(face_verts, axis=0)
         if center[2] > best_z:
             best_z = center[2]
             best_center = center
-            if i < len(base_geom.face_normals):
-                best_normal = base_geom.face_normals[i]
 
     # Scale overgrowth to be smaller (70% of base)
     over_max = np.max(np.abs(over_geom.vertices)) if len(over_geom.vertices) > 0 else 1.0
