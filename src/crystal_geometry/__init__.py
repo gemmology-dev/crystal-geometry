@@ -19,7 +19,7 @@ Example:
 """
 
 __version__ = "2.0.0"
-__author__ = "Fabian Schuh"
+__author__ = "Bissbert"
 __email__ = "fabian@gemmology.dev"
 
 # Acceleration / Backend info
