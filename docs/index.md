@@ -2,7 +2,10 @@
 
 **3D Crystal Geometry Engine** - Computes polyhedra from Crystal Description Language (CDL) strings using half-space intersection with point group symmetry.
 
-Part of the [Gemmology Project](https://gemmology.dev).
+!!! tip "Interactive companion"
+    See live examples in the [Crystal Gallery](https://gemmology.dev/gallery/),
+    experiment with CDL notation in the [CDL Playground](https://gemmology.dev/playground/),
+    or take a [practice quiz](https://gemmology.dev/quiz/) on related material.
 
 ## Overview
 

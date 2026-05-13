@@ -47,6 +47,7 @@ nav:
   - API Reference: api.md
   - Examples: examples.md
   - Troubleshooting: troubleshooting.md
+  - "Try interactive ↗": https://gemmology.dev/gallery/
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -68,8 +69,20 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 extra:
+  generator: false
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/gemmology-dev
-    - icon: fontawesome/solid/globe
-      link: https://gemmology.dev
+      name: GitHub
+    - icon: fontawesome/solid/flask
+      link: https://gemmology.dev/playground/
+      name: CDL Playground
+    - icon: fontawesome/solid/graduation-cap
+      link: https://gemmology.dev/quiz/
+      name: Practice quiz
+    - icon: fontawesome/solid/gem
+      link: https://gemmology.dev/gallery/
+      name: Crystal gallery
+    - icon: fontawesome/solid/book
+      link: https://gemmology.dev/learn/
+      name: Learn (FGA)
